@@ -1,25 +1,30 @@
 {
-  "name": "PortfolioBackroomsGenerator",
+  "name": "Portfolio - BackroomsGenerator",
+  "servePort": 34876,
   "tree": {
     "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
       "PortfolioShared": {
-        "$path": "../../shared"
+        "$path": "src/shared/ReplicatedStorage/PortfolioShared"
       }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
       "Showcase": {
-        "$path": "src/server"
+        "$path": "src/backrooms/ServerScriptService/Showcase"
       }
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
         "Showcase": {
-          "$path": "src/client"
+          "$path": "src/backrooms/StarterPlayerScripts/Showcase"
         }
       }
     }

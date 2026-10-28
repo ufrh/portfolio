@@ -1,23 +1,28 @@
 # Roblox Portfolio
 
-Three independent, playable showcase places inside one Roblox experience.
+One Roblox experience with three showcase places, sharing a single `src/` source tree.
 
-- **Outfit Studio** — avatar outfit creator
-- **Inventory & Equipment** — inventory, equipment and persistence
-- **Backrooms Generator** — procedural room and corridor generation
+- Outfit Studio — `outfit.project.json`
+- Inventory & Equipment — `inventory.project.json`
+- Backrooms Generator — `backrooms.project.json`
 
-## Quick start
+## Windows workflow
 
-Install Rojo 7.x and the Rojo Studio plugin, clone the repo, then open the corresponding Roblox place in Studio.
+Double-click `START_PORTFOLIO.bat` and choose a place (1–3), or launch it with an argument: `START_PORTFOLIO.bat outfit`. Only the selected Rojo server runs at a time. Connect the Rojo Studio plugin at `localhost:34876` while the matching Roblox Studio place is open.
 
-```powershell
-.\scripts\start.ps1 -Place outfit-studio
-.\scripts\stop.ps1
-.\scripts\push.ps1 -Message "Add outfit showcase"
-```
+- `STOP_PORTFOLIO.bat`: stop Rojo and the optional Git watcher.
+- `PUSH_PORTFOLIO.bat`: prompt for a commit message, then commit and push `main`.
+- `START_PORTFOLIO.bat`: starts the Rojo server and a safe Git watcher (if Git is initialized).
 
-Available places: `outfit-studio`, `inventory-equipment`, `backrooms-generator`.
+## Source
 
-Each place has its own `default.project.json` and server/client scripts. Shared helpers live in `shared/`. FORGE remains a local/private UI dependency and is not copied into this public repository. The game features should remain independent of FORGE so they can be commissioned separately.
+- `src/shared/`: code used by all three places
+- `src/outfit/`: Outfit Studio scripts
+- `src/inventory/`: Inventory & Equipment scripts
+- `src/backrooms/`: Backrooms Generator scripts
 
-See [setup guide](docs/SETUP.md).
+Every place lives **inside the same published Roblox experience**, but has its own PlaceId. Set your actual place IDs in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.luau` after publishing.
+
+FORGE is a locally supplied UI framework; its private source is not included in this repository. Functional gameplay modules should remain portable.
+
+See `docs/SETUP.md`. This commit is scaffolding only.

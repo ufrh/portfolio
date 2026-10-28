@@ -1,25 +1,30 @@
 {
-  "name": "PortfolioInventoryEquipment",
+  "name": "Portfolio - InventoryEquipment",
+  "servePort": 34876,
   "tree": {
     "$className": "DataModel",
+    "$ignoreUnknownInstances": true,
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
+      "$ignoreUnknownInstances": true,
       "PortfolioShared": {
-        "$path": "../../shared"
+        "$path": "src/shared/ReplicatedStorage/PortfolioShared"
       }
     },
     "ServerScriptService": {
       "$className": "ServerScriptService",
+      "$ignoreUnknownInstances": true,
       "Showcase": {
-        "$path": "src/server"
+        "$path": "src/inventory/ServerScriptService/Showcase"
       }
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
+        "$ignoreUnknownInstances": true,
         "Showcase": {
-          "$path": "src/client"
+          "$path": "src/inventory/StarterPlayerScripts/Showcase"
         }
       }
     }

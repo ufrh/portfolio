@@ -1,43 +1,25 @@
-# Setup
+# Local setup
 
-## Roblox experience
+The Portfolio is **one Roblox experience with three places**, not three separate experiences.
 
-Create **one Roblox experience with three distinct places**. Make Outfit Studio the start place. Add Inventory & Equipment and Backrooms Generator as additional places, and note their **PlaceIds**.
+1. Create the three places in the same experience in Roblox Creator Hub.
+2. Clone: `git clone https://github.com/ufrh/portfolio.git`
+3. Install Rojo 7.x and Rojo Studio plugin.
+4. Double-click `START_PORTFOLIO.bat` and choose one place.
+5. Open that matching place in Roblox Studio and connect the Rojo plugin at `localhost:34876`.
+6. To switch places, disconnect Rojo, open the other Studio place, and restart using `START_PORTFOLIO.bat` with the other selection.
+7. Stop with `STOP_PORTFOLIO.bat`; commit/push using `PUSH_PORTFOLIO.bat`.
 
-You must open the intended place in Roblox Studio before connecting the Rojo plugin. A Rojo session does not switch Studio places or publish them automatically.
+The start launcher leaves its console running to pull GitHub changes from `origin/main` safely. It will **not** pull over uncommitted local changes, ahead commits, or branch divergence. The watcher doesn't push automatically.
 
-## Local prerequisites
+You can use a downloaded ZIP to run Rojo, but the live Git watcher and push shortcut require a real Git clone with a `.git` directory.
 
-- Windows PowerShell, Git, Roblox Studio
-- Rojo 7.x on PATH (or installed through Aftman)
-- Rojo Studio plugin
+## Place mapping
 
-## Workflow
+`outfit.project.json` => `src/outfit/`
+`inventory.project.json` => `src/inventory/`
+`backrooms.project.json` => `src/backrooms/`
 
-From the repository root:
+All three share `src/shared/`. Insert actual PlaceIds in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.luau` after publishing.
 
-```powershell
-.\scripts\start.ps1 -Place outfit-studio
-.\scripts\start.ps1 -Place inventory-equipment
-.\scripts\start.ps1 -Place backrooms-generator
-.\scripts\stop.ps1
-.\scripts\push.ps1 -Message "Describe changes"
-```
-
-`start.ps1` stops any previously tracked Rojo process before launching the selected project. `stop.ps1` stops only that tracked process. `push.ps1` commits staged changes and pushes the active Git branch; it does not publish Roblox places.
-
-For the first connection, open the matching Studio place and connect the Rojo plugin to `localhost:34872`. When switching projects, disconnect/reconnect Rojo to the newly opened place.
-
-## Place structure
-
-`places/<place>/default.project.json` maps only that place's own scripts into StarterPlayerScripts and ServerScriptService, plus the common `shared/` directory into ReplicatedStorage.
-
-Keep FORGE assets in the Studio place or in locally ignored dependencies until explicitly licensed/published. Each demo's gameplay logic must be usable without FORGE.
-
-## Teleports
-
-Once the three places are published, add their **actual PlaceIds** to `shared/PlaceIds.luau`. Studio testing of cross-place teleports is limited; test in a published experience.
-
-## Notes
-
-This commit establishes project scaffolding only. The outfit, inventory, and procedural systems are not implemented yet.
+FORGE can be installed locally in Studio; this repo does not expose the framework source.

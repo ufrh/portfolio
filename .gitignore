@@ -1,15 +1,10 @@
-# Roblox Studio artifacts
+.run/
+logs/
 *.rbxl.lock
 *.rbxlx.lock
-.DS_Store
-Thumbs.db
-
-# Local process/runtime state
-.run/
-*.log
-
-# Local/private FORGE assets and credentials
 .env
 .env.*
 private/
 vendor/FORGE/
+.DS_Store
+Thumbs.db
