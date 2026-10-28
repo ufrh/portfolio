@@ -1,17 +1,23 @@
 # Roblox Portfolio
 
-Playable Roblox development showcases: Outfit Studio, Inventory & Equipment, and Backrooms Generator.
+Three independent, playable showcase places inside one Roblox experience.
 
-This repository uses separate Rojo projects for three places in one Roblox experience. See `docs/SETUP.md` for Studio setup, place publishing, and the local start/stop workflow.
+- **Outfit Studio** — avatar outfit creator
+- **Inventory & Equipment** — inventory, equipment and persistence
+- **Backrooms Generator** — procedural room and corridor generation
 
-## Places
+## Quick start
 
-- `places/outfit-studio` — avatar outfit creator
-- `places/inventory-equipment` — inventory and equipment demo
-- `places/backrooms-generator` — procedural architecture demo
+Install Rojo 7.x and the Rojo Studio plugin, clone the repo, then open the corresponding Roblox place in Studio.
 
-## Local development
+```powershell
+.\scripts\start.ps1 -Place outfit-studio
+.\scripts\stop.ps1
+.\scripts\push.ps1 -Message "Add outfit showcase"
+```
 
-From repository root, run `scripts/start.ps1 -Place outfit-studio` (or `inventory-equipment` / `backrooms-generator`). To end the Rojo session, use `scripts/stop.ps1`. For each place, connect the Rojo Studio plugin to localhost while that place is open in Studio.
+Available places: `outfit-studio`, `inventory-equipment`, `backrooms-generator`.
 
-FORGE can power the showcase interfaces, but is kept as a private/local dependency; the functional systems should remain portable.
+Each place has its own `default.project.json` and server/client scripts. Shared helpers live in `shared/`. FORGE remains a local/private UI dependency and is not copied into this public repository. The game features should remain independent of FORGE so they can be commissioned separately.
+
+See [setup guide](docs/SETUP.md).

@@ -1,0 +1,27 @@
+{
+  "name": "PortfolioInventoryEquipment",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "PortfolioShared": {
+        "$path": "../../shared"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "Showcase": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "Showcase": {
+          "$path": "src/client"
+        }
+      }
+    }
+  }
+}
