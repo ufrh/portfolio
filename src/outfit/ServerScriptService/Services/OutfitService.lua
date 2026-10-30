@@ -21,6 +21,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		local raw = AvatarEditorService:GetItemDetailsAsync(id, Enum.AvatarItemType[itemType])
 		local item = Catalog.normalize(raw)
 		assert(item.id == id, "Catalog returned a different item.")
+		assert(item.itemType == itemType, "Catalog returned an unexpected item type.")
 		if (detailCount >= 300) then table.clear(details); detailCount = 0 end
 		details[key] = item
 		detailCount += 1
@@ -101,7 +102,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			busy[player] = nil
 			if (not success) then
 				warn("[Outfit] " .. tostring(result))
-				return {ok = false, message = "Couldn't finish that request. Try again in a moment."};
+				return {ok = false, message = "Couldn't apply that item. Check Output for the Outfit error."};
 			end
 			return result;
 		end
