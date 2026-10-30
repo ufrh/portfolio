@@ -1,6 +1,10 @@
 {
   "name": "Portfolio - OutfitStudio",
   "servePort": 34876,
+  "placeId": 135768979013187,
+  "servePlaceIds": [
+    135768979013187
+  ],
   "tree": {
     "$className": "DataModel",
     "$ignoreUnknownInstances": true,
