@@ -164,7 +164,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		if (not success or not result) then return {ok = false} end
 		return {ok = true, name = result.Name};
 	end
-	OutfitService:ConfigureEndpoint("getPreview", {Schema = {idType, kindType}, Rate = {Capacity = 40, Refill = 10}})
+	OutfitService:ConfigureEndpoint("getPreview", {Schema = {idType, kindType}, Rate = {Capacity = 60, Refill = 15}})
 
 	endpoint("getState", {}, function(player)
 		return snapshot(getSession(player));

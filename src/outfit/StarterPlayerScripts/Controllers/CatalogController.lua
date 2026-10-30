@@ -26,8 +26,21 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			return self.service.getPreview(self.service, item.id, item.itemType);
 		end)
 		if (not success or not result.ok or generation ~= self.generation or self.stopped) then return end
-		local source = self.previewFolder:FindFirstChild(result.name)
+		local source = self.previewFolder:WaitForChild(result.name, 5)
 		if (source and parent.Parent) then self.view:preview(parent, source) end
+	end
+
+	function CatalogController:loadPreviews(cards, generation: number)
+		local nextIndex = 0
+		local function worker()
+			while (generation == self.generation and not self.stopped) do
+				nextIndex += 1
+				local card = cards[nextIndex]
+				if (not card) then return end
+				self:previewItem(card.frame.Preview, card.item, generation)
+			end
+		end
+		for _ = 1, math.min(4, #cards) do task.spawn(worker) end
 	end
 
 	function CatalogController:request(method: string, ...)
@@ -92,12 +105,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self:updateSelection()
 		self:updatePage()
 		local generation = self.generation
-		task.spawn(function()
-			for _, card in self.cards do
-				if (generation ~= self.generation or self.stopped) then return end
-				self:previewItem(card.frame.Preview, card.item, generation)
-			end
-		end)
+		self:loadPreviews(table.clone(self.cards), generation)
 	end
 
 	function CatalogController:updatePage()
