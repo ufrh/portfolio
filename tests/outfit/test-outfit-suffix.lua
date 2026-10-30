@@ -33,6 +33,7 @@ service:Init()
 expect(call(first, "getState").revision == 0, "initial avatar revision")
 expect(avatar(call(first, "getState")).properties.Shirt == 0, "baseline comes from player character")
 service:Start()
+service.playerConnections[first] = {}
 service:prepareCharacter(first, first.Character)
 expect(first.Character.pivot == 1, "character placed at authored Rig pivot")
 expect(first.Character.HumanoidRootPart.Anchored and humanoid.WalkSpeed == 0, "root anchored and walking disabled")
@@ -42,15 +43,28 @@ expect(humanoid.DisplayDistanceType == "None" and humanoid.HealthDisplayType == 
 expect(humanoid.NameDisplayDistance == 0 and humanoid.HealthDisplayDistance == 0, "overhead distances suppressed")
 expect(not first.Character.billboard.Enabled, "custom character billboard hidden")
 expect(first.Character.HumanoidRootPart.CanCollide == false, "character collisions disabled")
+first.Character.HumanoidRootPart.Anchored = false
+first.Character.pivot = 999
+service.heartbeat.callback()
+expect(first.Character.HumanoidRootPart.Anchored and first.Character.pivot == 1, "post-spawn unanchor is corrected at Rig position")
+local replacementRoot = {Name = "HumanoidRootPart", IsA = function(_, class) return class == "BasePart" end}
+modules.Character.preparePart(replacementRoot)
+expect(replacementRoot.Anchored, "replacement root is anchored as soon as it appears")
 local fresh, freshHumanoid = player(3)
 local loaded = fresh.Character
 fresh.Character = nil
 fresh.CharacterAdded, fresh.CharacterAppearanceLoaded = signal(), signal()
-function fresh:LoadCharacterAsync() self.loads = (self.loads or 0) + 1; self.Character = loaded end
+function fresh:LoadCharacterAsync()
+	self.loads = (self.loads or 0) + 1
+	self.Character = loaded
+	loaded.HumanoidRootPart.Anchored = false
+	loaded.pivot = 999
+end
 expect(not call(fresh, "getState").ok, "loading character returns retryable failure")
 environment.task = {spawn = function(callback) callback() end}
 service.added.callback(fresh)
 expect(fresh.loads == 1 and fresh.Character == loaded, "player character is explicitly spawned once")
+expect(loaded.HumanoidRootPart.Anchored and loaded.pivot == 1, "LoadCharacter completion reapplies anchor and position")
 service.playerConnections[fresh][1].callback(loaded)
 expect(loaded.HumanoidRootPart.Anchored and freshHumanoid.WalkSpeed == 0, "spawned character is immediately locked")
 expect(call(fresh, "getState").ok, "character becomes available after spawning")
@@ -122,7 +136,7 @@ for _, category in {"Clothing", "Accessories", "Body", "Animations"} do
 	for index in Catalog.subcategories[category] do
 		local params = Catalog.searchParams(category, index, "test", 1)
 		expect(#params.AssetTypes + #params.BundleTypes > 0, category .. " has valid filters")
-		expect(params.Limit == 24 and params.SearchKeyword == "test", "search params")
+		expect(({[10] = true, [28] = true, [30] = true, [60] = true, [120] = true})[params.Limit] and params.SearchKeyword == "test", "Roblox-supported search limit")
 	end
 end
 expect(Catalog.categoryFor("Shirt") == "Clothing", "classic clothing classification")

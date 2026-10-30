@@ -4,6 +4,7 @@ local AvatarEditorService = game:GetService("AvatarEditorService")
 local AssetService = game:GetService("AssetService")
 local HttpService = game:GetService("HttpService")
 local ServerStorage = game:GetService("ServerStorage")
+local RunService = game:GetService("RunService")
 
 local FORGE = require(ReplicatedStorage:WaitForChild("FORGE"))
 local Shared = ReplicatedStorage:WaitForChild("OutfitShared")
@@ -244,6 +245,13 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	function OutfitService:Start()
 		self.playerConnections, self.partConnections = {}, {}
+		self.heartbeat = RunService.Heartbeat:Connect(function()
+			for player in self.playerConnections do
+				local character = player.Character
+				local root = character and character:FindFirstChild("HumanoidRootPart")
+				if (root and not root.Anchored) then Character.lock(character, self.creatorPivot) end
+			end
+		end)
 		self.removing = Players.PlayerRemoving:Connect(function(player)
 			for _, connection in self.playerConnections[player] or {} do connection:Disconnect() end
 			self.playerConnections[player] = nil
@@ -274,6 +282,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 				if (player.Character) then self:prepareCharacter(player, player.Character); return end
 				local success, reason = pcall(function() player:LoadCharacterAsync() end)
 				if (not success) then warn("[Creator] " .. tostring(reason)) end
+				if (player.Parent and player.Character) then self:prepareCharacter(player, player.Character) end
 			end)
 		end
 		self.added = Players.PlayerAdded:Connect(connectPlayer)
@@ -283,6 +292,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	function OutfitService:Stop()
 		if (self.removing) then self.removing:Disconnect() end
 		if (self.added) then self.added:Disconnect() end
+		if (self.heartbeat) then self.heartbeat:Disconnect() end
 		for _, connections in self.playerConnections or {} do
 			for _, connection in connections do connection:Disconnect() end
 		end

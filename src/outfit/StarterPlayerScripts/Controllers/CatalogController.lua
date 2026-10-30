@@ -11,6 +11,7 @@ local Shared = ReplicatedStorage:WaitForChild("OutfitShared")
 local Catalog = require(Shared.Catalog)
 local Character = require(Shared.Character)
 local View = require(script.Parent.Parent.Outfit.View)
+local Gui = require(script.Parent.Parent.Outfit.Gui)
 
 local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}) do
 	local player = Players.LocalPlayer
@@ -364,14 +365,10 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.cards, self.pageCache, self.page = {}, {}, 1
 		self.service = FORGE.GetService("OutfitService")
 		local playerGui = player:WaitForChild("PlayerGui")
-		local gui = playerGui:FindFirstChild("Catalog")
-		if (not gui) then
-			local template = StarterGui:WaitForChild("Catalog", 15)
-			assert(template, "Catalog UI is missing from StarterGui.")
-			gui = template:Clone()
-			gui.ResetOnSpawn = false
-			gui.Parent = playerGui
-		end
+		local template = StarterGui:WaitForChild("Catalog", 15)
+		assert(template, "Catalog UI is missing from StarterGui.")
+		local gui, guiConnection = Gui.mount(playerGui, template)
+		self.guiConnection = guiConnection
 		self.view = View.new(gui)
 		self.view:resize()
 		local actions = Instance.new("Frame") do
@@ -529,6 +526,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.generation += 1
 		self.previewGeneration += 1
 		if (self.view) then self.view:destroy() end
+		if (self.guiConnection) then self.guiConnection:Disconnect() end
 		if (self.previewTrack) then self.previewTrack:Stop(.15) end
 		if (self.controls) then self.controls:Enable() end
 		if (self.cameraKey) then RunService:UnbindFromRenderStep(self.cameraKey) end

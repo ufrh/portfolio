@@ -1,5 +1,5 @@
 local Catalog = {} do
-	Catalog.pageSize = 24
+	Catalog.pageSize = 28
 	Catalog.categories = {"Clothing", "Accessories", "Body", "Animations", "Outfits", "Starred", "Recents"}
 	Catalog.sorts = {
 		{label = "MOST SALES", value = "Bestselling"},

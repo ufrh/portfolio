@@ -4,6 +4,11 @@ local Character = {} do
 			object.CanCollide = false
 			object.CanTouch = false
 			object.CanQuery = false
+			if (object.Name == "HumanoidRootPart") then
+				object.Anchored = true
+				object.AssemblyLinearVelocity = Vector3.zero
+				object.AssemblyAngularVelocity = Vector3.zero
+			end
 		elseif (object:IsA("BillboardGui")) then object.Enabled = false end
 	end
 
@@ -11,6 +16,10 @@ local Character = {} do
 		local humanoid = model:FindFirstChildOfClass("Humanoid")
 		local root = model:FindFirstChild("HumanoidRootPart")
 		if (not humanoid or not root) then return false end
+		root.Anchored = true
+		root.AssemblyLinearVelocity = Vector3.zero
+		root.AssemblyAngularVelocity = Vector3.zero
+		model:PivotTo(pivot)
 		humanoid.WalkSpeed = 0
 		humanoid.JumpPower = 0
 		humanoid.JumpHeight = 0
@@ -22,11 +31,7 @@ local Character = {} do
 		humanoid.HealthDisplayDistance = 0
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 		humanoid:Move(Vector3.zero)
-		root.Anchored = true
-		root.AssemblyLinearVelocity = Vector3.zero
-		root.AssemblyAngularVelocity = Vector3.zero
 		for _, object in model:GetDescendants() do Character.preparePart(object) end
-		model:PivotTo(pivot)
 		return true;
 	end
 end return Character;
