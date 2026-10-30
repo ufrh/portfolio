@@ -11,7 +11,8 @@ local function player(id)
 	function humanoid:SetStateEnabled(state, enabled) self.disabledState = state; self.stateEnabled = enabled end
 	function humanoid:Move(value) self.moveDirection = value end
 	function humanoid:IsA() return false end
-	local root = {IsA = function(_, class) return class == "BasePart" end}
+	local root = {Name = "HumanoidRootPart", children = {}, IsA = function(_, class) return class == "BasePart" end}
+	function root:FindFirstChild(name) return self.children[name] end
 	local billboard = {Enabled = true, IsA = function(_, class) return class == "BillboardGui" end}
 	local character = {Humanoid = humanoid, HumanoidRootPart = root, DescendantAdded = signal(), billboard = billboard}
 	function character:FindFirstChildOfClass() return humanoid end
@@ -47,21 +48,22 @@ expect(humanoid.applied.Shirt == 0 and #humanoid.applied:GetAccessories(true) ==
 service:Start()
 service.playerConnections[first] = {}
 service:prepareCharacter(first, first.Character)
-expect(first.Character.pivot == 1, "character placed at authored Rig pivot")
-expect(first.Character.HumanoidRootPart.Anchored and humanoid.WalkSpeed == 0, "root anchored and walking disabled")
+local firstRoot = first.Character.HumanoidRootPart
+expect(not firstRoot.Anchored and humanoid.WalkSpeed == 0, "root stays unanchored and walking is disabled")
+expect(firstRoot:FindFirstChild("OutfitPosition").Attachment1 == hrpPosition, "AlignPosition targets Terrain.HRPPosition")
+expect(firstRoot:FindFirstChild("OutfitOrientation").Attachment0 == firstRoot:FindFirstChild("OutfitRootAttachment"), "AlignOrientation drives root attachment")
 expect(humanoid.JumpPower == 0 and humanoid.JumpHeight == 0 and humanoid.stateEnabled == false, "both jump modes disabled")
 expect(humanoid.AutoRotate == false and humanoid.Jump == false, "turning and active jump disabled")
 expect(humanoid.DisplayDistanceType == "None" and humanoid.HealthDisplayType == "AlwaysOff", "overhead name and health hidden")
 expect(humanoid.NameDisplayDistance == 0 and humanoid.HealthDisplayDistance == 0, "overhead distances suppressed")
 expect(not first.Character.billboard.Enabled, "custom character billboard hidden")
 expect(first.Character.HumanoidRootPart.CanCollide == false, "character collisions disabled")
-first.Character.HumanoidRootPart.Anchored = false
-first.Character.pivot = 999
+firstRoot.children.OutfitPosition = nil
 service.heartbeat.callback()
-expect(first.Character.HumanoidRootPart.Anchored and first.Character.pivot == 1, "post-spawn unanchor is corrected at Rig position")
+expect(firstRoot:FindFirstChild("OutfitPosition") ~= nil and not firstRoot.Anchored, "missing position constraint is restored")
 local replacementRoot = {Name = "HumanoidRootPart", IsA = function(_, class) return class == "BasePart" end}
 modules.Character.preparePart(replacementRoot)
-expect(replacementRoot.Anchored, "replacement root is anchored as soon as it appears")
+expect(not replacementRoot.Anchored, "replacement root remains physics-driven")
 local fresh, freshHumanoid = player(3)
 local loaded = fresh.Character
 fresh.Character = nil
@@ -69,16 +71,15 @@ fresh.CharacterAdded, fresh.CharacterAppearanceLoaded = signal(), signal()
 function fresh:LoadCharacterAsync()
 	self.loads = (self.loads or 0) + 1
 	self.Character = loaded
-	loaded.HumanoidRootPart.Anchored = false
-	loaded.pivot = 999
+	loaded.HumanoidRootPart.Anchored = true
 end
 expect(not call(fresh, "getState").ok, "loading character returns retryable failure")
 environment.task = {spawn = function(callback) callback() end}
 service.added.callback(fresh)
 expect(fresh.loads == 1 and fresh.Character == loaded, "player character is explicitly spawned once")
-expect(loaded.HumanoidRootPart.Anchored and loaded.pivot == 1, "LoadCharacter completion reapplies anchor and position")
+expect(not loaded.HumanoidRootPart.Anchored and loaded.HumanoidRootPart:FindFirstChild("OutfitPosition"), "LoadCharacter completion adds position constraint")
 service.playerConnections[fresh][1].callback(loaded)
-expect(loaded.HumanoidRootPart.Anchored and freshHumanoid.WalkSpeed == 0, "spawned character is immediately locked")
+expect(not loaded.HumanoidRootPart.Anchored and freshHumanoid.WalkSpeed == 0, "spawned character is immediately constrained")
 expect(call(fresh, "getState").ok, "character becomes available after spawning")
 environment.task = nil
 service:Stop()

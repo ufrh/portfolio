@@ -38,7 +38,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		loaded:Destroy()
 		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
 		if (not success) then description:Destroy(); error(reason) end
-		Character.lock(character, OutfitService.creatorPivot)
+		Character.constrain(character, OutfitService.creatorPosition)
 		local session = {
 			description = description, baseline = description:Clone(), favorites = {}, recents = {},
 			outfits = {}, nextOutfit = 0, selected = nil, revision = 0
@@ -65,7 +65,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		return {ok = true, avatarJSON = HttpService:JSONEncode(Description.pack(session.description)),
 			equippedJSON = HttpService:JSONEncode(items), favoritesJSON = HttpService:JSONEncode(session.favorites),
 			recentsJSON = HttpService:JSONEncode(session.recents), outfitsJSON = HttpService:JSONEncode(outfits),
-			selected = session.selected, revision = session.revision, creatorPivot = OutfitService.creatorPivot};
+			selected = session.selected, revision = session.revision};
 	end
 
 	local function apply(player, session, description, selected)
@@ -77,10 +77,10 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		if (not success) then
 			description:Destroy()
 			pcall(function() humanoid:ApplyDescriptionAsync(session.description) end)
-			Character.lock(character, OutfitService.creatorPivot)
+			Character.constrain(character, OutfitService.creatorPosition)
 			error(reason)
 		end
-		Character.lock(character, OutfitService.creatorPivot)
+		Character.constrain(character, OutfitService.creatorPosition)
 		session.description:Destroy()
 		session.description = description
 		session.selected = selected
@@ -232,9 +232,11 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	function OutfitService:Init()
 		Players.CharacterAutoLoads = false
+		local position = workspace.Terrain:WaitForChild("HRPPosition", 10)
+		assert(position and position:IsA("Attachment"), "Terrain.HRPPosition must be an Attachment.")
+		self.creatorPosition = position
 		local rig = workspace:WaitForChild("Rig", 10)
 		assert(rig and rig:IsA("Model"), "Workspace.Rig is missing.")
-		self.creatorPivot = rig:GetPivot()
 		rig.Parent = ServerStorage
 	end
 
@@ -242,7 +244,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		local humanoid = character:WaitForChild("Humanoid", 15)
 		local root = character:WaitForChild("HumanoidRootPart", 15)
 		if (not humanoid or not root or character ~= player.Character) then return end
-		Character.lock(character, self.creatorPivot)
+		Character.constrain(character, self.creatorPosition)
 		local previous = self.partConnections[player]
 		if (previous) then previous:Disconnect() end
 		self.partConnections[player] = character.DescendantAdded:Connect(Character.preparePart)
@@ -254,7 +256,8 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			for player in self.playerConnections do
 				local character = player.Character
 				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if (root and not root.Anchored) then Character.lock(character, self.creatorPivot) end
+				if (root and (root.Anchored or not root:FindFirstChild("OutfitPosition")
+					or not root:FindFirstChild("OutfitOrientation"))) then Character.constrain(character, self.creatorPosition) end
 			end
 		end)
 		self.removing = Players.PlayerRemoving:Connect(function(player)

@@ -264,10 +264,46 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		local model = player.Character
 		if (not self.state or not model) then return end
 		if (self.preview == model and self.previewRevision == self.state.revision) then return end
-		self.rigPivot = self.state.creatorPivot
-		if (not self.rigPivot or not Character.lock(model, self.rigPivot * CFrame.Angles(0, self.rotation, 0))) then return end
+		local root = model:FindFirstChild("HumanoidRootPart")
+		if (not root or not root:FindFirstChild("OutfitOrientation")) then return end
 		self.preview, self.previewRevision = model, self.state.revision
+		self:setRotation(self.rotation)
 		if (self.previewTrack) then self.previewTrack:Stop(.15); self.previewTrack = nil end
+	end
+
+	function CatalogController:setRotation(rotation: number)
+		self.rotation = rotation
+		local model = player.Character
+		local root = model and model:FindFirstChild("HumanoidRootPart")
+		local orientation = root and root:FindFirstChild("OutfitOrientation")
+		if (orientation) then
+			orientation.CFrame = self.hrpPosition.WorldCFrame.Rotation * CFrame.Angles(0, rotation, 0)
+		end
+	end
+
+	function CatalogController:beginDrag(input, processed: boolean)
+		if (processed or (input.UserInputType ~= Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.Touch)) then return end
+		self.dragInput = input
+		self.dragPosition = input.Position
+	end
+
+	function CatalogController:drag(input)
+		local dragging = self.dragInput
+		if (not dragging) then return end
+		if (dragging.UserInputType == Enum.UserInputType.Touch and input ~= dragging) then return end
+		if (dragging.UserInputType == Enum.UserInputType.MouseButton1
+			and input.UserInputType ~= Enum.UserInputType.MouseMovement) then return end
+		local position = input.Position
+		self:setRotation(self.rotation - (position.X - self.dragPosition.X) * .01)
+		self.dragPosition = position
+	end
+
+	function CatalogController:endDrag(input)
+		if (input == self.dragInput or (self.dragInput and self.dragInput.UserInputType == Enum.UserInputType.MouseButton1
+			and input.UserInputType == Enum.UserInputType.MouseButton1)) then
+			self.dragInput, self.dragPosition = nil, nil
+		end
 	end
 
 	function CatalogController:playMotion(item)
@@ -389,8 +425,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		action("Reset", "RESET", 0, function() self:request("reset") end)
 		action("SaveOutfit", "SAVE OUTFIT", 140, function() self:saveDialog() end)
 		action("Rotate", "ROTATE", 280, function()
-			self.rotation += math.rad(45)
-			if (self.preview) then self.preview:PivotTo(self.rigPivot * CFrame.Angles(0, self.rotation, 0)) end
+			self:setRotation(self.rotation + math.rad(45))
 		end)
 		self.allowAccess = action("AllowAccess", "ALLOW ACCESS", 420, function()
 			AvatarEditorService:PromptAllowInventoryReadAccess()
@@ -504,13 +539,17 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		end)
 		local camLock = workspace.Terrain:WaitForChild("CamLockAngle", 10)
 		assert(camLock and camLock:IsA("Attachment"), "Terrain.CamLockAngle must be an Attachment.")
+		self.hrpPosition = workspace.Terrain:WaitForChild("HRPPosition", 10)
+		assert(self.hrpPosition and self.hrpPosition:IsA("Attachment"), "Terrain.HRPPosition must be an Attachment.")
 		local camera = workspace.CurrentCamera
 		self:lockCamera(camLock)
 		self.view:connect(camera:GetPropertyChangedSignal("ViewportSize"), function() self.view:resize() end)
 		self.view:connect(UserInputService.InputBegan, function(input, processed)
-			if (processed) then return end
+			self:beginDrag(input, processed)
 			if (input.KeyCode == Enum.KeyCode.Escape and self.dialog) then self.dialog:Destroy(); self.dialog = nil end
 		end)
+		self.view:connect(UserInputService.InputChanged, function(input) self:drag(input) end)
+		self.view:connect(UserInputService.InputEnded, function(input) self:endDrag(input) end)
 		self:chooseCategory("Clothing")
 		task.spawn(function()
 			for _ = 1, 10 do

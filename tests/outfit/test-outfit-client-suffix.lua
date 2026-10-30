@@ -69,13 +69,26 @@ function editor:SearchCatalogAsync() error("API down") end
 controller:load()
 flush()
 expect(not controller.loading and string.find(messages[#messages], "retry"), "catalog error exposes retry")
-environment.CFrame = {Angles = function() return 1 end}
+local rotationBase = setmetatable({}, {__mul = function(_, angle) return angle end})
+environment.CFrame = {Angles = function(_, angle) return angle end}
 controller.rotation = 0
-controller.state = {creatorPivot = 1, revision = 1, equipped = {}}
+controller.hrpPosition = {WorldCFrame = {Rotation = rotationBase}}
+controller.state = {revision = 1, equipped = {}}
 controller:updatePreview()
 expect(controller.preview == first.Character, "creator uses actual player character")
-expect(first.Character.pivot == 1 and first.Character.HumanoidRootPart.Anchored, "client keeps character at Rig position")
+expect(not first.Character.HumanoidRootPart.Anchored, "client leaves root physics-driven")
+controller:setRotation(1.25)
+expect(first.Character.HumanoidRootPart:FindFirstChild("OutfitOrientation").CFrame == 1.25, "rotation updates AlignOrientation target")
+local mouse = {UserInputType = "MouseButton1", Position = {X = 100}}
+controller:beginDrag(mouse, false)
+controller:drag({UserInputType = "MouseMovement", Position = {X = 140}})
+expect(math.abs(controller.rotation - .85) < .001, "mouse drag rotates through AlignOrientation")
+controller:endDrag(mouse)
+expect(controller.dragInput == nil, "rotation drag ends cleanly")
+controller:beginDrag(mouse, true)
+expect(controller.dragInput == nil, "UI interactions do not begin rotation drag")
 local previous = controller.preview
+modules.Character.constrain(second.Character, hrpPosition)
 first.Character = second.Character
 controller.state.revision = 2
 controller:updatePreview()

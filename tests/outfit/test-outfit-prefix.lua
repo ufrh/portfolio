@@ -33,6 +33,9 @@ local EnumMock = {
 	HumanoidDisplayDistanceType = {None = "None"},
 	HumanoidHealthDisplayType = {AlwaysOff = "AlwaysOff"},
 	HumanoidStateType = {Jumping = "Jumping"},
+	PositionAlignmentMode = {TwoAttachment = "TwoAttachment"},
+	OrientationAlignmentMode = {OneAttachment = "OneAttachment"},
+	UserInputType = {MouseButton1 = "MouseButton1", MouseMovement = "MouseMovement", Touch = "Touch"},
 	AvatarAssetType = enums("AvatarAssetType", {"TShirt", "Hat", "Shirt", "Pants", "Head", "Face", "Gear", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShoulderAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory", "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation", "EmoteAnimation", "TShirtAccessory", "ShirtAccessory", "PantsAccessory", "JacketAccessory", "SweaterAccessory", "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory", "DressSkirtAccessory", "DynamicHead"}),
 	AccessoryType = enums("AccessoryType", {"Hat", "Hair", "Face", "Neck", "Shoulder", "Front", "Back", "Waist", "TShirt", "Shirt", "Pants", "Jacket", "Sweater", "Shorts", "LeftShoe", "RightShoe", "DressSkirt"}),
 	BundleType = enums("BundleType", {"BodyParts", "DynamicHead", "Shoes", "Animations"}),
@@ -114,15 +117,36 @@ local services = {Players = playerService, ReplicatedStorage = replicated, Avata
 	UserInputService = {}, RunService = {Heartbeat = signal()}, StarterGui = {}, ServerStorage = {},
 	AssetService = {GetBundleDetailsAsync = function() return {Items = {{Type = "Asset", Id = 101}, {Type = "Asset", Id = 102}}} end}}
 local modules = {FORGE = ForgeMock}
+local function newInstance(name)
+	if (name == "HumanoidDescription") then return newDescription() end
+	local data = {ClassName = name, Name = name}
+	local object
+	object = setmetatable({}, {
+		__index = data,
+		__newindex = function(_, key, value)
+			data[key] = value
+			if (key == "Parent" and value) then
+				value.children = value.children or {}
+				value.children[data.Name] = object
+			end
+		end
+	})
+	data.IsA = function(_, class) return class == name end
+	data.Destroy = function() data.destroyed = true end
+	return object;
+end
+local rotation = {Rotation = 1}
+local hrpPosition = {WorldCFrame = rotation, IsA = function(_, class) return class == "Attachment" end}
+local terrain = {WaitForChild = function(_, name) assert(name == "HRPPosition"); return hrpPosition end}
 local environment = setmetatable({
 	Enum = EnumMock,
 	CatalogSearchParams = {new = function() return {} end},
-	Instance = {new = function(name) assert(name == "HumanoidDescription"); return newDescription() end},
+	Instance = {new = newInstance},
 	Color3 = {new = function(r, g, b) return {R = r, G = g, B = b} end},
 	Vector3 = {zero = {}},
 	typeof = function(value) return if type(value) == "table" and value._enum then "EnumItem" else typeof(value) end,
 	game = {GetService = function(_, name) assert(services[name], name); return services[name] end},
-	workspace = {WaitForChild = function(_, name)
+	workspace = {Terrain = terrain, WaitForChild = function(_, name)
 		assert(name == "Rig")
 		return {GetPivot = function() return 1 end, IsA = function(_, class) return class == "Model" end, FindFirstChildOfClass = function()
 			return {GetAppliedDescription = function()
