@@ -1,3 +1,0 @@
-[submodule "vendor/ruckus"]
-	path = vendor/ruckus
-	url = https://github.com/ufrh/Ruckus.git
