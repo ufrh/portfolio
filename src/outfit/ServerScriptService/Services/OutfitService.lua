@@ -139,9 +139,14 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		local success, result = pcall(function()
 			local description = previewDescription(player, id, itemType)
 			if (not description) then return nil end
+			local bodyParts = {}
+			for _, property in {"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"} do
+				if (description[property] > 0) then table.insert(bodyParts, property) end
+			end
 			local model = Players:CreateHumanoidModelFromDescriptionAsync(description, Enum.HumanoidRigType.R15)
 			description:Destroy()
 			model.Name = key
+			model:SetAttribute("PreviewBodyParts", table.concat(bodyParts, ","))
 			for _, object in model:GetDescendants() do
 				if (object:IsA("LuaSourceContainer")) then object:Destroy()
 				elseif (object:IsA("BasePart")) then object.Anchored = true; object.CanCollide = false end

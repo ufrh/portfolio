@@ -119,12 +119,33 @@ local View = {} do
 		model.Name = "PreviewModel"
 		model.Parent = world
 		model:PivotTo(CFrame.new())
+		local visible = {}
+		for name in string.gmatch(source:GetAttribute("PreviewBodyParts") or "", "[^,]+") do visible[name] = true end
+		local groups = {
+			Head = {Head = true},
+			Torso = {UpperTorso = true, LowerTorso = true},
+			LeftArm = {LeftUpperArm = true, LeftLowerArm = true, LeftHand = true},
+			RightArm = {RightUpperArm = true, RightLowerArm = true, RightHand = true},
+			LeftLeg = {LeftUpperLeg = true, LeftLowerLeg = true, LeftFoot = true},
+			RightLeg = {RightUpperLeg = true, RightLowerLeg = true, RightFoot = true}
+		}
+		local visibleParts = {}
+		for group in visible do
+			for name in groups[group] or {} do visibleParts[name] = true end
+		end
 		local minimum, maximum
 		for _, object in model:GetChildren() do
 			if (object:IsA("BasePart") and object.Name ~= "HumanoidRootPart") then
 				local low, high = object.Position - object.Size / 2, object.Position + object.Size / 2
 				minimum = if (minimum) then Vector3.new(math.min(minimum.X, low.X), math.min(minimum.Y, low.Y), math.min(minimum.Z, low.Z)) else low
 				maximum = if (maximum) then Vector3.new(math.max(maximum.X, high.X), math.max(maximum.Y, high.Y), math.max(maximum.Z, high.Z)) else high
+				if (not visibleParts[object.Name]) then
+					object.Transparency = 1
+					object.CastShadow = false
+					for _, detail in object:GetDescendants() do
+						if (detail:IsA("Decal") or detail:IsA("Texture")) then detail.Transparency = 1 end
+					end
+				end
 			end
 		end
 		local target = if (minimum) then (minimum + maximum) / 2 else Vector3.zero

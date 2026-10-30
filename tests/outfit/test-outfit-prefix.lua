@@ -72,7 +72,7 @@ function DescriptionMock:RemoveEmote(name) self._emotes[name] = nil end
 local fixtures = {
 	[100] = {AssetType = "Shirt"}, [101] = {AssetType = "Shirt"}, [102] = {AssetType = "Pants"},
 	[200] = {AssetType = "Hat"}, [201] = {AssetType = "JacketAccessory"}, [300] = {AssetType = "EmoteAnimation"},
-	[400] = {AssetType = "Gear"}, [500] = {ItemType = "Bundle", BundleType = "BodyParts"}
+	[400] = {AssetType = "Gear"}, [500] = {ItemType = "Bundle", BundleType = "BodyParts"}, [600] = {AssetType = "Head"}
 }
 local jsonValues = {}
 local HttpMock = {}
@@ -136,6 +136,11 @@ local function newInstance(name)
 	})
 	data.IsA = function(_, class) return class == name end
 	data.FindFirstChild = function(_, childName) return data.children and data.children[childName] end
+	data.SetAttribute = function(_, key, value)
+		data.attributes = data.attributes or {}
+		data.attributes[key] = value
+	end
+	data.GetAttribute = function(_, key) return data.attributes and data.attributes[key] end
 	data.Destroy = function() data.destroyed = true end
 	return object;
 end

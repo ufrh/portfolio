@@ -54,6 +54,8 @@ expect(creatorRig.ModelStreamingMode == "Persistent", "creator rig remains strea
 expect(call(first, "getState").revision == 0, "initial avatar revision")
 local preview = call(first, "getPreview", 200, "Asset")
 expect(preview.ok and service.previewFolder:FindFirstChild(preview.name), "3D preview mannequin is replicated")
+local bodyPreview = call(first, "getPreview", 600, "Asset")
+expect(service.previewFolder:FindFirstChild(bodyPreview.name):GetAttribute("PreviewBodyParts") == "Head", "body previews expose only the catalog body section")
 local baseline = avatar(call(first, "getState"))
 expect(baseline.properties.Shirt == 0 and baseline.properties.Pants == 0, "baseline removes classic clothing")
 expect(baseline.properties.Face == 0 and baseline.properties.Head == 0, "baseline removes face and body packages")
