@@ -23,6 +23,6 @@ Double-click `START_PORTFOLIO.bat` and choose a place (1–3), or launch it with
 
 Every place lives **inside the same published Roblox experience**, but has its own PlaceId. Set your actual place IDs in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.luau` after publishing.
 
-FORGE is a locally supplied UI framework; its private source is not included in this repository. Functional gameplay modules should remain portable.
+Outfit Studio uses FORGE v3.2.0 from the private `ufrh/Ruckus` Git submodule at `vendor/ruckus`. Initialize it with `git submodule update --init --recursive` before starting Outfit Studio. GitHub access to Ruckus is required; its source is not published in this repository. Functional gameplay modules should remain portable.
 
 See `docs/SETUP.md`. This commit is scaffolding only.

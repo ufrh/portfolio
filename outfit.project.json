@@ -9,6 +9,9 @@
       "$ignoreUnknownInstances": true,
       "PortfolioShared": {
         "$path": "src/shared/ReplicatedStorage/PortfolioShared"
+      },
+      "FORGE": {
+        "$path": "vendor/ruckus/src/shared/ReplicatedStorage/FORGE"
       }
     },
     "ServerScriptService": {
@@ -16,6 +19,9 @@
       "$ignoreUnknownInstances": true,
       "Showcase": {
         "$path": "src/outfit/ServerScriptService/Showcase"
+      },
+      "FORGE": {
+        "$path": "vendor/ruckus/src/shared/ServerScriptService/FORGE"
       }
     },
     "StarterPlayer": {
@@ -25,6 +31,9 @@
         "$ignoreUnknownInstances": true,
         "Showcase": {
           "$path": "src/outfit/StarterPlayerScripts/Showcase"
+        },
+        "FORGE": {
+          "$path": "vendor/ruckus/src/shared/StarterPlayerScripts/FORGE"
         }
       }
     }
