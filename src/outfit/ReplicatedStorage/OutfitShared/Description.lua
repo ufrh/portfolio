@@ -39,6 +39,14 @@ local Description = {} do
 		return description;
 	end
 
+	function Description.bare(description: HumanoidDescription): HumanoidDescription
+		local bare = description:Clone()
+		for _, property in Catalog.properties do bare[property] = 0 end
+		bare:SetAccessories({}, true)
+		bare:SetEmotes({})
+		return bare;
+	end
+
 	function Description.equipped(description: HumanoidDescription)
 		local items, seen = {}, {}
 		local function add(id, assetType)

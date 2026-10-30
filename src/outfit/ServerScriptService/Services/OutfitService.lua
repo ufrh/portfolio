@@ -33,7 +33,12 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		assert(humanoid and player:HasAppearanceLoaded(), "Your character is still loading. Try again.")
-		local description = humanoid:GetAppliedDescription()
+		local loaded = humanoid:GetAppliedDescription()
+		local description = Description.bare(loaded)
+		loaded:Destroy()
+		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
+		if (not success) then description:Destroy(); error(reason) end
+		Character.lock(character, OutfitService.creatorPivot)
 		local session = {
 			description = description, baseline = description:Clone(), favorites = {}, recents = {},
 			outfits = {}, nextOutfit = 0, selected = nil, revision = 0
@@ -273,6 +278,8 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 						local session = sessions[player]
 						if (session) then
 							pcall(function() character.Humanoid:ApplyDescriptionAsync(session.description) end)
+						else
+							pcall(function() getSession(player) end)
 						end
 						self:prepareCharacter(player, character)
 					end)
@@ -282,7 +289,10 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 				if (player.Character) then self:prepareCharacter(player, player.Character); return end
 				local success, reason = pcall(function() player:LoadCharacterAsync() end)
 				if (not success) then warn("[Creator] " .. tostring(reason)) end
-				if (player.Parent and player.Character) then self:prepareCharacter(player, player.Character) end
+				if (player.Parent and player.Character) then
+					pcall(function() getSession(player) end)
+					self:prepareCharacter(player, player.Character)
+				end
 			end)
 		end
 		self.added = Players.PlayerAdded:Connect(connectPlayer)

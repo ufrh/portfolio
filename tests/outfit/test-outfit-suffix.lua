@@ -22,6 +22,13 @@ local function player(id)
 	return {UserId = id, Parent = true, Character = character, HasAppearanceLoaded = function() return true end}, humanoid
 end
 local first, humanoid = player(1)
+humanoid.applied.Shirt = 81
+humanoid.applied.Pants = 82
+humanoid.applied.Face = 83
+humanoid.applied.Head = 84
+humanoid.applied.IdleAnimation = 85
+humanoid.applied:SetAccessories({{AssetId = 86, AccessoryType = {Name = "Hair"}}})
+humanoid.applied:SetEmotes({Wave = {87}})
 local second = player(2)
 local function call(owner, name, ...)
 	local valid = modules.Validator.ValidateArguments(table.pack(...), service.options[name])
@@ -31,7 +38,12 @@ end
 local function avatar(state) return jsonValues[state.avatarJSON] end
 service:Init()
 expect(call(first, "getState").revision == 0, "initial avatar revision")
-expect(avatar(call(first, "getState")).properties.Shirt == 0, "baseline comes from player character")
+local baseline = avatar(call(first, "getState"))
+expect(baseline.properties.Shirt == 0 and baseline.properties.Pants == 0, "baseline removes classic clothing")
+expect(baseline.properties.Face == 0 and baseline.properties.Head == 0, "baseline removes face and body packages")
+expect(baseline.properties.IdleAnimation == 0, "baseline removes animations")
+expect(#baseline.accessories == 0 and next(baseline.emotes) == nil, "baseline removes accessories and emotes")
+expect(humanoid.applied.Shirt == 0 and #humanoid.applied:GetAccessories(true) == 0, "bare baseline applied to character")
 service:Start()
 service.playerConnections[first] = {}
 service:prepareCharacter(first, first.Character)
@@ -107,7 +119,7 @@ editor.GetItemDetailsAsync = originalDetails
 expect(call(first, "toggleItem", 100, "Asset").ok, "outer change completed")
 expect(call(first, "saveOutfit", "Test outfit").ok, "outfit saved")
 state = call(first, "reset")
-expect(state.ok and avatar(state).properties.Shirt == 0, "original player appearance reset")
+expect(state.ok and avatar(state).properties.Shirt == 0, "bare creator baseline reset")
 state = call(first, "applyOutfit", 1, "SavedOutfit")
 expect(state.ok and avatar(state).properties.Shirt == 100, "saved outfit restored")
 expect(not call(second, "applyOutfit", 1, "SavedOutfit").ok, "saved outfit belongs to owner")
