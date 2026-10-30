@@ -6,7 +6,7 @@ Outfit Studio uses FORGE services/controllers with the existing StarterGui Catal
 
 - Clothing, Accessories, Body, and Animations use Roblox catalog search, sorting, and cursor pagination. Previous pages are cached. Search responses from an older request cannot replace a newer category or query.
 - Subcategories are cleared and populated at runtime from OutfitShared.Catalog. Prebuilt Components.SubCategories folders are not required.
-- Item cards show names, creators, prices, and selection badges. Accessories, body assets, bundles, and outfits use rotating 3D mannequin previews in the authored ViewportFrames; 2D clothing keeps Roblox thumbnails.
+- Item cards show Roblox thumbnails, names, creators, prices, and selection badges. The authored ViewportFrames are disabled at runtime.
 - Try-on toggles supported assets; bundles apply supported constituent assets. Gear is browse-only.
 - The server validates remote arguments and resolves asset types from Roblox, never from client metadata. Per-player mutation locks and rate limits prevent overlapping avatar changes.
 - Automatic player spawning is disabled. Workspace.Rig stays in Workspace, is stripped to a bare baseline during server initialization, and is the creator mannequin.
@@ -36,7 +36,7 @@ Catalog searches use a supported Roblox page limit of 28. A read-only Studio API
 
 1. Sync the latest GitHub checkout through Rojo to place 135768979013187. Start Play.
 2. Search Clothing, change subcategories, advance a page, and return. Change categories during loading.
-3. Confirm accessories, body assets, bundles, and outfits rotate inside item ViewportFrames while classic clothing uses thumbnails.
+3. Confirm assets, bundles, and outfits display Roblox thumbnails without viewport loading.
 4. Try on a classic shirt, accessory, layered clothing, body item, animation, and bundle. Check the rig and equipped strip, then remove an item.
 5. Open Roblox Outfits. Grant or decline access and check the retry behavior.
 6. Check narrow screens and controller activation. Inspect Output for errors and FORGE's boot report.

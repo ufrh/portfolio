@@ -20,29 +20,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		if (self.notice) then self.notice.Text = text end
 	end
 
-	function CatalogController:previewItem(parent, item, generation: number)
-		if (not Catalog.is3D(item)) then return end
-		local success, result = pcall(function()
-			return self.service.getPreview(self.service, item.id, item.itemType);
-		end)
-		if (not success or not result.ok or generation ~= self.generation or self.stopped) then return end
-		local source = self.previewFolder:WaitForChild(result.name, 5)
-		if (source and parent.Parent) then self.view:preview(parent, source) end
-	end
-
-	function CatalogController:loadPreviews(cards, generation: number)
-		local nextIndex = 0
-		local function worker()
-			while (generation == self.generation and not self.stopped) do
-				nextIndex += 1
-				local card = cards[nextIndex]
-				if (not card) then return end
-				self:previewItem(card.frame.Preview, card.item, generation)
-			end
-		end
-		for _ = 1, math.min(4, #cards) do task.spawn(worker) end
-	end
-
 	function CatalogController:request(method: string, ...)
 		if (self.busy) then self:notify("Your previous change is still loading."); return false end
 		self.busy = true
@@ -104,8 +81,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		end
 		self:updateSelection()
 		self:updatePage()
-		local generation = self.generation
-		self:loadPreviews(table.clone(self.cards), generation)
 	end
 
 	function CatalogController:updatePage()
@@ -256,8 +231,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			end
 			self.view:thumbnail(frame, item)
 			local remove = self.view:button(frame, "Remove", function() self:request("removeItem", item.id) end)
-			local generation = self.generation
-			task.spawn(function() self:previewItem(frame, item, generation) end)
 		end
 	end
 
@@ -375,8 +348,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 				task.defer(function() if (not self.stopped) then self:updatePreview() end end)
 			end
 		end)
-		self.previewFolder = ReplicatedStorage:WaitForChild("OutfitPreviews", 15)
-		assert(self.previewFolder, "ReplicatedStorage.OutfitPreviews is missing.")
 		self.previous = self.view:button(self.view.inner.Page.Previous, "PreviousPage", function()
 			if (self.previous.Active) then self:changePage(-1) end
 		end)

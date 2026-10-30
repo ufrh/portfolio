@@ -68,14 +68,6 @@ local Catalog = {} do
 		SweaterAccessory = "Sweater", ShortsAccessory = "Shorts", LeftShoeAccessory = "LeftShoe",
 		RightShoeAccessory = "RightShoe", DressSkirtAccessory = "DressSkirt"
 	}
-	local bodyAssets = {Head = true, DynamicHead = true, Torso = true, LeftArm = true, RightArm = true,
-		LeftLeg = true, RightLeg = true}
-
-	function Catalog.is3D(item): boolean
-		if (item.itemType == "Bundle" or item.itemType == "RobloxOutfit" or item.itemType == "SavedOutfit") then return true end
-		return item.itemType == "Asset" and (Catalog.accessories[item.assetType] ~= nil or bodyAssets[item.assetType] == true);
-	end
-
 	function Catalog.assetName(value): string?
 		if (typeof(value) == "EnumItem") then return value.Name end
 		if (type(value) == "string") then return value end

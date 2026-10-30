@@ -36,7 +36,6 @@ local EnumMock = {
 	PositionAlignmentMode = {TwoAttachment = "TwoAttachment"},
 	OrientationAlignmentMode = {OneAttachment = "OneAttachment"},
 	ModelStreamingMode = {Persistent = "Persistent"},
-	HumanoidRigType = {R15 = "R15"},
 	UserInputType = {MouseButton1 = "MouseButton1", MouseMovement = "MouseMovement", Touch = "Touch"},
 	AvatarAssetType = enums("AvatarAssetType", {"TShirt", "Hat", "Shirt", "Pants", "Head", "Face", "Gear", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShoulderAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory", "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation", "EmoteAnimation", "TShirtAccessory", "ShirtAccessory", "PantsAccessory", "JacketAccessory", "SweaterAccessory", "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory", "DressSkirtAccessory", "DynamicHead"}),
 	AccessoryType = enums("AccessoryType", {"Hat", "Hair", "Face", "Neck", "Shoulder", "Front", "Back", "Waist", "TShirt", "Shirt", "Pants", "Jacket", "Sweater", "Shorts", "LeftShoe", "RightShoe", "DressSkirt"}),
@@ -72,7 +71,7 @@ function DescriptionMock:RemoveEmote(name) self._emotes[name] = nil end
 local fixtures = {
 	[100] = {AssetType = "Shirt"}, [101] = {AssetType = "Shirt"}, [102] = {AssetType = "Pants"},
 	[200] = {AssetType = "Hat"}, [201] = {AssetType = "JacketAccessory"}, [300] = {AssetType = "EmoteAnimation"},
-	[400] = {AssetType = "Gear"}, [500] = {ItemType = "Bundle", BundleType = "BodyParts"}, [600] = {AssetType = "Head"}
+	[400] = {AssetType = "Gear"}, [500] = {ItemType = "Bundle", BundleType = "BodyParts"}
 }
 local jsonValues = {}
 local HttpMock = {}
@@ -136,18 +135,8 @@ local function newInstance(name)
 	})
 	data.IsA = function(_, class) return class == name end
 	data.FindFirstChild = function(_, childName) return data.children and data.children[childName] end
-	data.SetAttribute = function(_, key, value)
-		data.attributes = data.attributes or {}
-		data.attributes[key] = value
-	end
-	data.GetAttribute = function(_, key) return data.attributes and data.attributes[key] end
 	data.Destroy = function() data.destroyed = true end
 	return object;
-end
-function playerService:CreateHumanoidModelFromDescriptionAsync()
-	local model = newInstance("Model")
-	function model:GetDescendants() return {} end
-	return model;
 end
 local rotation = {Rotation = 1}
 local hrpPosition = {WorldCFrame = rotation, IsA = function(_, class) return class == "Attachment" end}

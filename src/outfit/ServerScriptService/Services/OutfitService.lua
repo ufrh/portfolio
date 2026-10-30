@@ -13,7 +13,6 @@ local Character = require(Shared.Character)
 
 local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	local sessions, details = {}, {}
-	local previews, previewOrder = {}, {}
 	local detailCount = 0
 
 	local function getDetails(id: number, itemType: string)
@@ -110,61 +109,6 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	end
 	local idType = FORGE.Types.Number({Min = 1, Max = 9007199254740991, Integer = true})
 	local kindType = FORGE.Types.String({MaxLength = 16})
-
-	local function previewDescription(player, id, itemType)
-		if (itemType == "SavedOutfit") then
-			for _, outfit in getSession(player).outfits do
-				if (outfit.id == id) then return outfit.description:Clone() end
-			end
-			return nil;
-		end
-		if (itemType == "RobloxOutfit") then return Players:GetHumanoidDescriptionFromOutfitIdAsync(id) end
-		local description = OutfitService.baseline:Clone()
-		if (itemType == "Asset") then
-			local item = getDetails(id, itemType)
-			if (not Catalog.is3D(item) or not Description.apply(description, item)) then description:Destroy(); return nil end
-		else
-			local bundle = AssetService:GetBundleDetailsAsync(id)
-			for _, entry in bundle.Items or {} do
-				if (entry.Type == "Asset") then Description.apply(description, getDetails(entry.Id, "Asset")) end
-			end
-		end
-		return description;
-	end
-
-	OutfitService.Client.getPreview = function(player, id, itemType)
-		local key = itemType .. "_" .. id .. (if (itemType == "SavedOutfit") then "_" .. player.UserId else "")
-		local cached = previews[key]
-		if (cached and cached.Parent) then return {ok = true, name = cached.Name} end
-		local success, result = pcall(function()
-			local description = previewDescription(player, id, itemType)
-			if (not description) then return nil end
-			local bodyParts = {}
-			for _, property in {"Head", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg"} do
-				if (description[property] > 0) then table.insert(bodyParts, property) end
-			end
-			local model = Players:CreateHumanoidModelFromDescriptionAsync(description, Enum.HumanoidRigType.R15)
-			description:Destroy()
-			model.Name = key
-			model:SetAttribute("PreviewBodyParts", table.concat(bodyParts, ","))
-			for _, object in model:GetDescendants() do
-				if (object:IsA("LuaSourceContainer")) then object:Destroy()
-				elseif (object:IsA("BasePart")) then object.Anchored = true; object.CanCollide = false end
-			end
-			model.Parent = OutfitService.previewFolder
-			previews[key] = model
-			table.insert(previewOrder, model)
-			if (#previewOrder > 60) then
-				local oldest = table.remove(previewOrder, 1)
-				previews[oldest.Name] = nil
-				oldest:Destroy()
-			end
-			return model;
-		end)
-		if (not success or not result) then return {ok = false} end
-		return {ok = true, name = result.Name};
-	end
-	OutfitService:ConfigureEndpoint("getPreview", {Schema = {idType, kindType}, Rate = {Capacity = 60, Refill = 15}})
 
 	endpoint("getState", {}, function(player)
 		return snapshot(getSession(player));
@@ -297,10 +241,6 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		loaded:Destroy()
 		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(self.baseline) end)
 		assert(success, reason)
-		local folder = ReplicatedStorage:FindFirstChild("OutfitPreviews") or Instance.new("Folder")
-		folder.Name = "OutfitPreviews"
-		folder.Parent = ReplicatedStorage
-		self.previewFolder = folder
 	end
 
 	function OutfitService:prepareRig()
