@@ -16,6 +16,9 @@
       },
       "FORGE": {
         "$path": "src/shared/ReplicatedStorage/FORGE"
+      },
+      "OutfitShared": {
+        "$path": "src/outfit/ReplicatedStorage/OutfitShared"
       }
     },
     "ServerScriptService": {
@@ -26,6 +29,9 @@
       },
       "FORGE": {
         "$path": "src/shared/ServerScriptService/FORGE"
+      },
+      "Services": {
+        "$path": "src/outfit/ServerScriptService/Services"
       }
     },
     "StarterPlayer": {
@@ -38,6 +44,12 @@
         },
         "FORGE": {
           "$path": "src/shared/StarterPlayerScripts/FORGE"
+        },
+        "Controllers": {
+          "$path": "src/outfit/StarterPlayerScripts/Controllers"
+        },
+        "Outfit": {
+          "$path": "src/outfit/StarterPlayerScripts/Outfit"
         }
       }
     }

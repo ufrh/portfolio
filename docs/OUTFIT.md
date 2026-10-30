@@ -1,0 +1,37 @@
+# Outfit Studio
+
+Outfit Studio uses FORGE services/controllers with the existing StarterGui Catalog and Components templates. Rojo maps code only; the UI and showroom remain authored in Studio.
+
+## Behavior
+
+- Clothing, Accessories, Body, and Animations use Roblox catalog search, sorting, and cursor pagination. Previous pages are cached. Search responses from an older request cannot replace a newer category or query.
+- Subcategories are cleared and populated at runtime from OutfitShared.Catalog. Prebuilt Components.SubCategories folders are not required.
+- Item cards show thumbnails, names, creators, prices, selection badges, and favorite controls. Runtime clones receive meaningful child names.
+- Try-on toggles supported assets; bundles apply supported constituent assets. Gear is browse-only. Unsupported items and failed requests show feedback.
+- The server validates remote arguments and resolves asset types from Roblox, never from client metadata. Per-player mutation locks and rate limits prevent overlapping avatar changes.
+- The equipped strip removes individual items. RESET restores the initial account avatar. A local showroom preview follows successful changes; ROTATE turns it.
+- Starred, Recents, and My Outfits last for the current server session. Favorites are capped at 24, recents at 20, and saved outfits at 20. SAVE OUTFIT opens a name input; the × on a saved card deletes it. No DataStore persistence or purchases are implemented.
+- Roblox Outfits reads the current player's platform outfits. ALLOW ACCESS requests Roblox inventory permission explicitly. No permission prompt occurs on startup. Applying an outfit changes the experience character, not the account avatar.
+- The existing interface fits a 1583×864 reference canvas. Buttons use Activated for mouse, touch, and controller activation.
+
+## Checks
+
+Run the behavior tests with Node and the official Luau CLI:
+
+```sh
+node tests/outfit/run.cjs /path/to/luau
+rojo build outfit.project.json -o outfit.rbxlx
+```
+
+The tests execute the actual modules against API fixtures. They cover validation, concurrent requests, rollback, item/bundle changes, outfit ownership, session limits, FORGE response size, pagination failures, and stale request cancellation. They do not replace a Studio Play test of live Roblox APIs or visual layout.
+
+## Play test
+
+1. Sync the latest GitHub checkout through Rojo to place 135768979013187. Start Play.
+2. Search Clothing, change subcategories/sorting, advance a page, and return. Change categories during loading.
+3. Try on a classic shirt, accessory, layered clothing, body item, animation, and bundle. Check the preview and equipped strip. Remove an item and RESET.
+4. Star/unstar items and inspect Starred/Recents. Save, apply, and delete a session outfit.
+5. Open Roblox Outfits. Grant or decline access and check the retry behavior.
+6. Check narrow screens and controller activation. Inspect Output for errors and FORGE's boot report.
+
+No live Play test was run during implementation because Studio was designated read-only.
