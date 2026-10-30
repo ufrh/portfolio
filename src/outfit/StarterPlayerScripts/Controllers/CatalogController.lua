@@ -295,7 +295,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		if (dragging.UserInputType == Enum.UserInputType.MouseButton1
 			and input.UserInputType ~= Enum.UserInputType.MouseMovement) then return end
 		local position = input.Position
-		self:setRotation(self.rotation - (position.X - self.dragPosition.X) * .01)
+		self:setRotation(self.rotation + (position.X - self.dragPosition.X) * .01)
 		self.dragPosition = position
 	end
 

@@ -32,7 +32,7 @@ end
 local EnumMock = {
 	HumanoidDisplayDistanceType = {None = "None"},
 	HumanoidHealthDisplayType = {AlwaysOff = "AlwaysOff"},
-	HumanoidStateType = {Jumping = "Jumping"},
+	HumanoidStateType = {Jumping = "Jumping", Freefall = "Freefall", FallingDown = "FallingDown", RunningNoPhysics = "RunningNoPhysics"},
 	PositionAlignmentMode = {TwoAttachment = "TwoAttachment"},
 	OrientationAlignmentMode = {OneAttachment = "OneAttachment"},
 	UserInputType = {MouseButton1 = "MouseButton1", MouseMovement = "MouseMovement", Touch = "Touch"},

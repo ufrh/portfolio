@@ -59,6 +59,9 @@ local Character = {} do
 		humanoid.NameDisplayDistance = 0
 		humanoid.HealthDisplayDistance = 0
 		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+		humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
 		humanoid:Move(Vector3.zero)
 		for _, object in model:GetDescendants() do Character.preparePart(object) end
 		return true, orientation;

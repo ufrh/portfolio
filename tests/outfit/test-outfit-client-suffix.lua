@@ -82,7 +82,7 @@ expect(first.Character.HumanoidRootPart:FindFirstChild("OutfitOrientation").CFra
 local mouse = {UserInputType = "MouseButton1", Position = {X = 100}}
 controller:beginDrag(mouse, false)
 controller:drag({UserInputType = "MouseMovement", Position = {X = 140}})
-expect(math.abs(controller.rotation - .85) < .001, "mouse drag rotates through AlignOrientation")
+expect(math.abs(controller.rotation - 1.65) < .001, "mouse drag uses inverted AlignOrientation direction")
 controller:endDrag(mouse)
 expect(controller.dragInput == nil, "rotation drag ends cleanly")
 controller:beginDrag(mouse, true)

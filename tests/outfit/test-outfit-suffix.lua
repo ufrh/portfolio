@@ -8,7 +8,11 @@ local function player(id)
 		if self.reenter then self.reenter(); self.reenter = nil end
 		self.applied = description:Clone()
 	end
-	function humanoid:SetStateEnabled(state, enabled) self.disabledState = state; self.stateEnabled = enabled end
+	function humanoid:SetStateEnabled(state, enabled)
+		self.states = self.states or {}
+		self.states[state] = enabled
+	end
+	function humanoid:ChangeState(state) self.state = state end
 	function humanoid:Move(value) self.moveDirection = value end
 	function humanoid:IsA() return false end
 	local root = {Name = "HumanoidRootPart", children = {}, IsA = function(_, class) return class == "BasePart" end}
@@ -52,7 +56,9 @@ local firstRoot = first.Character.HumanoidRootPart
 expect(not firstRoot.Anchored and humanoid.WalkSpeed == 0, "root stays unanchored and walking is disabled")
 expect(firstRoot:FindFirstChild("OutfitPosition").Attachment1 == hrpPosition, "AlignPosition targets Terrain.HRPPosition")
 expect(firstRoot:FindFirstChild("OutfitOrientation").Attachment0 == firstRoot:FindFirstChild("OutfitRootAttachment"), "AlignOrientation drives root attachment")
-expect(humanoid.JumpPower == 0 and humanoid.JumpHeight == 0 and humanoid.stateEnabled == false, "both jump modes disabled")
+expect(humanoid.JumpPower == 0 and humanoid.JumpHeight == 0 and humanoid.states.Jumping == false, "both jump modes disabled")
+expect(humanoid.states.Freefall == false and humanoid.states.FallingDown == false, "falling states disabled")
+expect(humanoid.state == "RunningNoPhysics", "mannequin uses stable non-falling state")
 expect(humanoid.AutoRotate == false and humanoid.Jump == false, "turning and active jump disabled")
 expect(humanoid.DisplayDistanceType == "None" and humanoid.HealthDisplayType == "AlwaysOff", "overhead name and health hidden")
 expect(humanoid.NameDisplayDistance == 0 and humanoid.HealthDisplayDistance == 0, "overhead distances suppressed")
