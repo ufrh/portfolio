@@ -409,6 +409,12 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.guiConnection = guiConnection
 		self.view = View.new(gui)
 		self.view:resize()
+		self.view:connect(self.rig.DescendantAdded, function(object)
+			if (object.Name == "HumanoidRootPart" or object.Name == "OutfitOrientation") then
+				self.previewRevision = nil
+				task.defer(function() if (not self.stopped) then self:updatePreview() end end)
+			end
+		end)
 		local actions = Instance.new("Frame") do
 			actions.Name = "OutfitActions"
 			actions.BackgroundTransparency = 1

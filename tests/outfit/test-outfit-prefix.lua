@@ -35,6 +35,7 @@ local EnumMock = {
 	HumanoidStateType = {Jumping = "Jumping", Freefall = "Freefall", FallingDown = "FallingDown", RunningNoPhysics = "RunningNoPhysics"},
 	PositionAlignmentMode = {TwoAttachment = "TwoAttachment"},
 	OrientationAlignmentMode = {OneAttachment = "OneAttachment"},
+	ModelStreamingMode = {Persistent = "Persistent"},
 	UserInputType = {MouseButton1 = "MouseButton1", MouseMovement = "MouseMovement", Touch = "Touch"},
 	AvatarAssetType = enums("AvatarAssetType", {"TShirt", "Hat", "Shirt", "Pants", "Head", "Face", "Gear", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShoulderAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory", "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation", "EmoteAnimation", "TShirtAccessory", "ShirtAccessory", "PantsAccessory", "JacketAccessory", "SweaterAccessory", "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory", "DressSkirtAccessory", "DynamicHead"}),
 	AccessoryType = enums("AccessoryType", {"Hat", "Hair", "Face", "Neck", "Shoulder", "Front", "Back", "Waist", "TShirt", "Shirt", "Pants", "Jacket", "Sweater", "Shorts", "LeftShoe", "RightShoe", "DressSkirt"}),

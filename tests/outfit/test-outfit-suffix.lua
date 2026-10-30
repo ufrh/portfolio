@@ -47,6 +47,7 @@ local function call(owner, name, ...)
 end
 local function avatar(state) return jsonValues[state.avatarJSON] end
 service:Init()
+expect(creatorRig.ModelStreamingMode == "Persistent", "creator rig remains streamed to character-free clients")
 expect(call(first, "getState").revision == 0, "initial avatar revision")
 local baseline = avatar(call(first, "getState"))
 expect(baseline.properties.Shirt == 0 and baseline.properties.Pants == 0, "baseline removes classic clothing")
@@ -56,6 +57,8 @@ expect(#baseline.accessories == 0 and next(baseline.emotes) == nil, "baseline re
 expect(humanoid.applied.Shirt == 0 and #humanoid.applied:GetAccessories(true) == 0, "bare baseline applied to Workspace.Rig")
 expect(creatorRig.HumanoidRootPart.networkOwner == first, "creator owns rig physics for local drag rotation")
 service:Start()
+service.added.callback(first)
+expect(first.ReplicationFocus == creatorRig.HumanoidRootPart, "player streaming focus follows creator rig")
 local firstRoot = creatorRig.HumanoidRootPart
 expect(not firstRoot.Anchored and humanoid.WalkSpeed == 0, "root stays unanchored and walking is disabled")
 expect(firstRoot:FindFirstChild("OutfitPosition").Attachment1 == hrpPosition, "AlignPosition targets Terrain.HRPPosition")

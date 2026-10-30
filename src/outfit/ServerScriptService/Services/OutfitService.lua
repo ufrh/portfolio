@@ -236,6 +236,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		self.creatorPosition = position
 		local rig = workspace:WaitForChild("Rig", 10)
 		assert(rig and rig:IsA("Model"), "Workspace.Rig is missing.")
+		rig.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 		self.creatorRig = rig
 	end
 
@@ -250,10 +251,16 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	function OutfitService:Start()
 		self:prepareRig()
+		local root = self.creatorRig:WaitForChild("HumanoidRootPart", 15)
+		local function focus(player)
+			if (root) then player.ReplicationFocus = root end
+		end
+		self.added = Players.PlayerAdded:Connect(focus)
+		for _, player in Players:GetPlayers() do focus(player) end
 		self.heartbeat = RunService.Heartbeat:Connect(function()
-			local root = self.creatorRig:FindFirstChild("HumanoidRootPart")
-			if (root and (root.Anchored or not root:FindFirstChild("OutfitPosition")
-				or not root:FindFirstChild("OutfitOrientation"))) then Character.constrain(self.creatorRig, self.creatorPosition) end
+			local currentRoot = self.creatorRig:FindFirstChild("HumanoidRootPart")
+			if (currentRoot and (currentRoot.Anchored or not currentRoot:FindFirstChild("OutfitPosition")
+				or not currentRoot:FindFirstChild("OutfitOrientation"))) then Character.constrain(self.creatorRig, self.creatorPosition) end
 		end)
 		self.removing = Players.PlayerRemoving:Connect(function(player)
 			local session = sessions[player]
@@ -267,6 +274,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	function OutfitService:Stop()
 		if (self.removing) then self.removing:Disconnect() end
+		if (self.added) then self.added:Disconnect() end
 		if (self.heartbeat) then self.heartbeat:Disconnect() end
 		if (self.partConnection) then self.partConnection:Disconnect() end
 	end
