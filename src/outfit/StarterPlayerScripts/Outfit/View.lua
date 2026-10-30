@@ -31,8 +31,8 @@ local View = {} do
 					local entry = self.viewports[index]
 					if (not entry.viewport.Parent) then table.remove(self.viewports, index)
 					else
-						local position = Vector3.new(math.sin(angle) * entry.distance, entry.height, math.cos(angle) * entry.distance)
-						entry.camera.CFrame = CFrame.lookAt(position, Vector3.zero)
+						local orbit = Vector3.new(math.sin(angle) * entry.distance, 0, math.cos(angle) * entry.distance)
+						entry.camera.CFrame = CFrame.lookAt(entry.target + orbit, entry.target)
 					end
 				end
 			end))
@@ -118,15 +118,25 @@ local View = {} do
 		local model = source:Clone()
 		model.Name = "PreviewModel"
 		model.Parent = world
-		local bounds, size = model:GetBoundingBox()
-		model:PivotTo(CFrame.new(-bounds.Position) * model:GetPivot())
+		model:PivotTo(CFrame.new())
+		local minimum, maximum
+		for _, object in model:GetChildren() do
+			if (object:IsA("BasePart") and object.Name ~= "HumanoidRootPart") then
+				local low, high = object.Position - object.Size / 2, object.Position + object.Size / 2
+				minimum = if (minimum) then Vector3.new(math.min(minimum.X, low.X), math.min(minimum.Y, low.Y), math.min(minimum.Z, low.Z)) else low
+				maximum = if (maximum) then Vector3.new(math.max(maximum.X, high.X), math.max(maximum.Y, high.Y), math.max(maximum.Z, high.Z)) else high
+			end
+		end
+		local target = if (minimum) then (minimum + maximum) / 2 else Vector3.zero
+		local size = if (minimum) then maximum - minimum else Vector3.one * 4
 		local camera = Instance.new("Camera")
 		camera.FieldOfView = 35
 		camera.Parent = viewport
 		viewport.CurrentCamera = camera
 		viewport.Visible = true
-		local distance = math.max(size.X, size.Y, size.Z) * 1.45
-		table.insert(self.viewports, {viewport = viewport, camera = camera, distance = math.max(distance, 2), height = size.Y * .06})
+		local radius = math.max(size.X, size.Y, size.Z) / 2
+		local distance = radius / math.tan(math.rad(camera.FieldOfView / 2)) * 1.18
+		table.insert(self.viewports, {viewport = viewport, camera = camera, distance = math.max(distance, 2), target = target})
 	end
 
 	function View:card(item, index: number, activate, favorite, removeSaved)

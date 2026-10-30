@@ -119,7 +119,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			return nil;
 		end
 		if (itemType == "RobloxOutfit") then return Players:GetHumanoidDescriptionFromOutfitIdAsync(id) end
-		local description = Instance.new("HumanoidDescription")
+		local description = OutfitService.baseline:Clone()
 		if (itemType == "Asset") then
 			local item = getDetails(id, itemType)
 			if (not Catalog.is3D(item) or not Description.apply(description, item)) then description:Destroy(); return nil end
