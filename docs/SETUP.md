@@ -20,7 +20,7 @@ You can use a downloaded ZIP to run Rojo, but the live Git watcher and push shor
 `inventory.project.json` => `src/inventory/`
 `backrooms.project.json` => `src/backrooms/`
 
-All three share `src/shared/`. Insert actual PlaceIds in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.luau` after publishing.
+All three share `src/shared/`. Insert actual PlaceIds in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.lua` after publishing.
 
 ## FORGE for Outfit Studio
 

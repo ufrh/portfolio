@@ -21,7 +21,7 @@ Double-click `START_PORTFOLIO.bat` and choose a place (1–3), or launch it with
 - `src/inventory/`: Inventory & Equipment scripts
 - `src/backrooms/`: Backrooms Generator scripts
 
-Every place lives **inside the same published Roblox experience**, but has its own PlaceId. Set your actual place IDs in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.luau` after publishing.
+Every place lives **inside the same published Roblox experience**, but has its own PlaceId. Set your actual place IDs in `src/shared/ReplicatedStorage/PortfolioShared/PlaceIds.lua` after publishing.
 
 Outfit Studio includes FORGE v3.2.0 directly in `src/shared/`. The framework was copied from `ufrh/Ruckus` commit `f23e36f7448fd98fb91657aca5e191cf662af97e`; no submodule or separate framework installation is required. Functional gameplay modules should remain portable.
 
