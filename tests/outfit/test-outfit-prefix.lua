@@ -107,7 +107,7 @@ local sharedMock = {Catalog = "Catalog", Description = "Description"}
 local replicated = {}
 function replicated:WaitForChild(name) return if name == "OutfitShared" then sharedMock else "FORGE" end
 local services = {Players = playerService, ReplicatedStorage = replicated, AvatarEditorService = editor, HttpService = HttpMock,
-	UserInputService = {}, RunService = {},
+	UserInputService = {}, RunService = {}, StarterGui = {},
 	AssetService = {GetBundleDetailsAsync = function() return {Items = {{Type = "Asset", Id = 101}, {Type = "Asset", Id = 102}}} end}}
 local modules = {FORGE = ForgeMock}
 local environment = setmetatable({
@@ -117,6 +117,16 @@ local environment = setmetatable({
 	Color3 = {new = function(r, g, b) return {R = r, G = g, B = b} end},
 	typeof = function(value) return if type(value) == "table" and value._enum then "EnumItem" else typeof(value) end,
 	game = {GetService = function(_, name) assert(services[name], name); return services[name] end},
+	workspace = {WaitForChild = function(_, name)
+		assert(name == "Rig")
+		return {FindFirstChildOfClass = function()
+			return {GetAppliedDescription = function()
+				local description = newDescription()
+				description.Shirt = 77
+				return description
+			end}
+		end}
+	end},
 	require = function(name) assert(modules[name], tostring(name)); return modules[name] end,
 	warn = function() end,
 }, {__index = getfenv()})

@@ -4,6 +4,7 @@ local AvatarEditorService = game:GetService("AvatarEditorService")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
 
 local FORGE = require(ReplicatedStorage:WaitForChild("FORGE"))
 local Shared = ReplicatedStorage:WaitForChild("OutfitShared")
@@ -270,23 +271,36 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		local avatar = self.state.avatar
 		task.spawn(function()
 			local description = Description.unpack(avatar)
-			local success, model = pcall(function()
-				return Players:CreateHumanoidModelFromDescriptionAsync(description, Enum.HumanoidRigType.R15);
+			local model = self.rigTemplate:Clone()
+			model.Name = "CreatorRig"
+			model:PivotTo(self.rigPivot * CFrame.Angles(0, self.rotation, 0))
+			local function prepare(object)
+				if (object:IsA("BasePart")) then
+					object.LocalTransparencyModifier = 1
+					object.CanCollide, object.CanTouch, object.CanQuery = false, false, false
+				end
+			end
+			for _, object in model:GetDescendants() do prepare(object) end
+			local added = model.DescendantAdded:Connect(prepare)
+			model.Parent = workspace
+			local success, reason = pcall(function()
+				model.Humanoid:ApplyDescriptionAsync(description)
 			end)
+			added:Disconnect()
 			description:Destroy()
 			if (not success) then
+				model:Destroy()
+				warn("[CreatorRig] " .. tostring(reason))
 				self.previewRevision = nil
-				self:notify("Try-on applied. Preview couldn't load; the next change will retry.")
+				self:notify("The Rig couldn't load that look. Try RESET or another item.")
 				return;
 			end
 			if (generation ~= self.previewGeneration or self.stopped) then model:Destroy(); return end
-			model.Name = "OutfitPreview"
 			for _, object in model:GetDescendants() do
-				if (object:IsA("BasePart")) then object.CanCollide = false; object.CanTouch = false; object.CanQuery = false end
+				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 0 end
 			end
 			model.HumanoidRootPart.Anchored = true
 			model:PivotTo(self.rigPivot * CFrame.Angles(0, self.rotation, 0))
-			model.Parent = workspace
 			if (self.preview) then self.preview:Destroy() end
 			self.preview = model
 			for _, object in self.showroomRig:GetDescendants() do
@@ -358,14 +372,36 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		input:CaptureFocus()
 	end
 
+	function CatalogController:lockCamera(camLock: Attachment)
+		local camera = workspace.CurrentCamera
+		self.previousCamera = {kind = camera.CameraType, cframe = camera.CFrame}
+		self.cameraKey = "OutfitCreatorCamera"
+		local function update()
+			local current = workspace.CurrentCamera
+			if (current) then
+				current.CameraType = Enum.CameraType.Scriptable
+				current.CFrame = camLock.WorldCFrame
+			end
+		end
+		RunService:BindToRenderStep(self.cameraKey, Enum.RenderPriority.Camera.Value + 1, update)
+		update()
+	end
+
 	function CatalogController:Start()
 		self.generation, self.previewGeneration = 0, 0
 		self.rotation = 0
 		self.query, self.sort, self.category, self.subcategory = "", 1, "Clothing", 1
 		self.cards, self.pageCache, self.page = {}, {}, 1
 		self.service = FORGE.GetService("OutfitService")
-		local gui = player:WaitForChild("PlayerGui"):WaitForChild("Catalog", 15)
-		assert(gui, "Catalog UI is missing from StarterGui.")
+		local playerGui = player:WaitForChild("PlayerGui")
+		local gui = playerGui:FindFirstChild("Catalog")
+		if (not gui) then
+			local template = StarterGui:WaitForChild("Catalog", 15)
+			assert(template, "Catalog UI is missing from StarterGui.")
+			gui = template:Clone()
+			gui.ResetOnSpawn = false
+			gui.Parent = playerGui
+		end
 		self.view = View.new(gui)
 		self.view:resize()
 		local actions = Instance.new("Frame") do
@@ -461,46 +497,22 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		local rig = workspace:WaitForChild("Rig", 10)
 		assert(rig and rig:IsA("Model"), "The showroom Rig is missing.")
 		self.rigPivot = rig:GetPivot()
-		local function hide(model)
-			for _, object in model:GetDescendants() do
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
-			end
-		end
 		self.showroomRig = rig
-		self.view:connect(player.CharacterAdded, function(character)
-			self.view:connect(character.DescendantAdded, function(object)
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
-			end)
-			hide(character)
-		end)
-		if (player.Character) then
-			hide(player.Character)
-			self.view:connect(player.Character.DescendantAdded, function(object)
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
-			end)
+		self.rigTemplate = rig:Clone()
+		assert(self.rigTemplate, "Workspace.Rig must be Archivable.")
+		for _, object in self.rigTemplate:GetDescendants() do
+			if (object:IsA("LuaSourceContainer")) then object:Destroy() end
 		end
+		local camLock = workspace.Terrain:WaitForChild("CamLockAngle", 10)
+		assert(camLock and camLock:IsA("Attachment"), "Terrain.CamLockAngle must be an Attachment.")
 		local camera = workspace.CurrentCamera
-		self.previousCamera = {kind = camera.CameraType, cframe = camera.CFrame}
-		local cameraPosition = self.rigPivot:PointToWorldSpace(Vector3.new(0, 3.5, -11))
-		local lookAt = self.rigPivot:PointToWorldSpace(Vector3.new(0, 1.5, 0))
-		local cameraFrame = CFrame.lookAt(cameraPosition, lookAt) * CFrame.new(3.5, 0, 0)
-		self.view:connect(RunService.RenderStepped, function()
-			camera.CameraType = Enum.CameraType.Scriptable
-			camera.CFrame = cameraFrame
-		end)
+		self:lockCamera(camLock)
 		self.view:connect(camera:GetPropertyChangedSignal("ViewportSize"), function() self.view:resize() end)
 		self.view:connect(UserInputService.InputBegan, function(input, processed)
 			if (processed) then return end
 			if (input.KeyCode == Enum.KeyCode.Escape and self.dialog) then self.dialog:Destroy(); self.dialog = nil end
 		end)
 		self:chooseCategory("Clothing")
-		task.spawn(function()
-			local module = player.PlayerScripts:WaitForChild("PlayerModule", 10)
-			if (module and not self.stopped) then
-				local success, controls = pcall(function() return require(module):GetControls() end)
-				if (success and not self.stopped) then self.controls = controls; controls:Disable() end
-			end
-		end)
 		task.spawn(function()
 			for _ = 1, 3 do
 				if (self.stopped or self:request("getState")) then return end
@@ -516,7 +528,8 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.previewGeneration += 1
 		if (self.view) then self.view:destroy() end
 		if (self.preview) then self.preview:Destroy() end
-		if (self.controls) then self.controls:Enable() end
+		if (self.rigTemplate) then self.rigTemplate:Destroy() end
+		if (self.cameraKey) then RunService:UnbindFromRenderStep(self.cameraKey) end
 		if (self.showroomRig) then
 			for _, object in self.showroomRig:GetDescendants() do
 				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 0 end

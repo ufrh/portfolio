@@ -12,6 +12,17 @@ local Description = require(Shared.Description)
 local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	local sessions, details = {}, {}
 	local detailCount = 0
+	local rigBaseline
+
+	local function getBaseline()
+		if (not rigBaseline) then
+			local rig = workspace:WaitForChild("Rig", 10)
+			local humanoid = rig and rig:FindFirstChildOfClass("Humanoid")
+			assert(humanoid, "Workspace.Rig needs a Humanoid.")
+			rigBaseline = humanoid:GetAppliedDescription()
+		end
+		return rigBaseline:Clone();
+	end
 
 	local function getDetails(id: number, itemType: string)
 		local key = itemType .. ":" .. id
@@ -27,13 +38,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	local function getSession(player: Player)
 		if (sessions[player]) then return sessions[player] end
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		assert(humanoid, "Wait for your character to load, then retry.")
-		local success, description = pcall(function()
-			return Players:GetHumanoidDescriptionFromUserIdAsync(player.UserId)
-		end)
-		if (not success) then description = humanoid:GetAppliedDescription() end
+		local description = getBaseline()
 		local session = {
 			description = description, baseline = description:Clone(), favorites = {}, recents = {},
 			outfits = {}, nextOutfit = 0, selected = nil, revision = 0
@@ -64,14 +69,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	end
 
 	local function apply(player, session, description, selected)
-		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
-		if (not humanoid or humanoid.Health <= 0) then description:Destroy(); error("Wait for your character to respawn.") end
-		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
-		if (not success) then
-			description:Destroy()
-			pcall(function() humanoid:ApplyDescriptionAsync(session.description) end)
-			error(reason)
-		end
+		if (not player.Parent) then description:Destroy(); error("Player left.") end
 		session.description:Destroy()
 		session.description = description
 		session.selected = selected
@@ -222,7 +220,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	end)
 
 	function OutfitService:Start()
-		self.characters = {}
+		Players.CharacterAutoLoads = false
 		self.removing = Players.PlayerRemoving:Connect(function(player)
 			local session = sessions[player]
 			if (not session) then return end
@@ -231,22 +229,9 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			session.baseline:Destroy()
 			for _, outfit in session.outfits do outfit.description:Destroy() end
 		end)
-		local function connectPlayer(player)
-			local connection = player.CharacterAppearanceLoaded:Connect(function(character)
-				local session = sessions[player]
-				if (session and not busy[player]) then
-					pcall(function() character.Humanoid:ApplyDescriptionAsync(session.description) end)
-				end
-			end)
-			table.insert(self.characters, connection)
-		end
-		self.appearance = Players.PlayerAdded:Connect(connectPlayer)
-		for _, player in Players:GetPlayers() do connectPlayer(player) end
 	end
 
 	function OutfitService:Stop()
 		if (self.removing) then self.removing:Disconnect() end
-		if (self.appearance) then self.appearance:Disconnect() end
-		for _, connection in self.characters or {} do connection:Disconnect() end
 	end
 end return OutfitService;

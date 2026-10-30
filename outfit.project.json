@@ -52,6 +52,12 @@
           "$path": "src/outfit/StarterPlayerScripts/Outfit"
         }
       }
+    },
+    "Players": {
+      "$className": "Players",
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
     }
   }
 }

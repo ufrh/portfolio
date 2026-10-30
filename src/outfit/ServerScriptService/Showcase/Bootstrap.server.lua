@@ -1,1 +1,3 @@
-print('[Portfolio:OutfitStudio] Server initialized')
+local Players = game:GetService("Players")
+
+Players.CharacterAutoLoads = false

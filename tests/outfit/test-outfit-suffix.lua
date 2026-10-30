@@ -8,7 +8,7 @@ local function player(id)
 		if self.reenter then self.reenter(); self.reenter = nil end
 		self.applied = description:Clone()
 	end
-	return {UserId = id, Parent = true, Character = {FindFirstChildOfClass = function() return humanoid end}}, humanoid
+	return {UserId = id, Parent = true}, humanoid
 end
 local first, humanoid = player(1)
 local second = player(2)
@@ -19,6 +19,11 @@ local function call(owner, name, ...)
 end
 local function avatar(state) return jsonValues[state.avatarJSON] end
 expect(call(first, "getState").revision == 0, "initial avatar revision")
+expect(first.Character == nil and call(first, "getState").ok, "creator initializes without a player character")
+expect(avatar(call(first, "getState")).properties.Shirt == 77, "baseline comes from Workspace.Rig")
+service:Start()
+expect(playerService.CharacterAutoLoads == false, "service disables character spawning")
+service:Stop()
 expect(not call(first, "toggleItem", -1, "Asset").ok, "negative id rejected")
 expect(not call(first, "toggleItem", 0/0, "Asset").ok, "NaN rejected")
 expect(not call(first, "toggleItem", 100, "Fake").ok, "invalid kind rejected")
@@ -41,23 +46,25 @@ expect(state.ok and avatar(state).accessories[1].IsLayered, "layered accessory c
 expect(not call(first, "toggleItem", 400, "Asset").ok, "gear rejected without changing avatar")
 state = call(first, "toggleItem", 500, "Bundle")
 expect(state.ok and avatar(state).properties.Shirt == 101 and avatar(state).properties.Pants == 102, "bundle assets applied")
-local revision = state.revision
-humanoid.fail = true
-state = call(first, "toggleItem", 100, "Asset")
-expect(not state.ok, "apply failure reported")
-state = call(first, "getState")
-expect(state.revision == revision and avatar(state).properties.Shirt == 101, "failed apply preserved state")
-expect(humanoid.applied.Shirt == 101, "failed apply rolled back character")
-humanoid.reenter = function() expect(not call(first, "reset").ok, "concurrent mutation rejected") end
+local originalDetails = editor.GetItemDetailsAsync
+editor.GetItemDetailsAsync = function(self, ...)
+	expect(not call(first, "reset").ok, "concurrent mutation rejected")
+	return originalDetails(self, ...)
+end
+expect(call(first, "toggleItem", 888, "Asset").ok, "outer lookup completed")
+editor.GetItemDetailsAsync = originalDetails
 expect(call(first, "toggleItem", 100, "Asset").ok, "outer change completed")
 expect(call(first, "saveOutfit", "Test outfit").ok, "outfit saved")
-expect(call(first, "reset").ok and humanoid.applied.Shirt == 0, "baseline reset")
-expect(call(first, "applyOutfit", 1, "SavedOutfit").ok and humanoid.applied.Shirt == 100, "saved outfit restored")
+state = call(first, "reset")
+expect(state.ok and avatar(state).properties.Shirt == 77, "authored rig baseline reset")
+state = call(first, "applyOutfit", 1, "SavedOutfit")
+expect(state.ok and avatar(state).properties.Shirt == 100, "saved outfit restored")
 expect(not call(second, "applyOutfit", 1, "SavedOutfit").ok, "saved outfit belongs to owner")
 expect(call(first, "deleteOutfit", 1).ok, "saved outfit deleted")
 expect(not call(first, "applyOutfit", 1, "SavedOutfit").ok, "deleted outfit cannot be applied")
 expect(not call(first, "saveOutfit", "   ").ok, "blank name rejected")
-expect(call(first, "applyOutfit", 1234, "RobloxOutfit").ok and humanoid.applied.Pants == 1234, "platform outfit applied")
+state = call(first, "applyOutfit", 1234, "RobloxOutfit")
+expect(state.ok and avatar(state).properties.Pants == 1234, "platform outfit applied")
 expect(not call(first, "toggleItem", 999, "Asset").ok, "catalog failure handled")
 expect(call(first, "toggleFavorite", 100, "Asset").ok, "favorite added")
 state = call(first, "toggleFavorite", 100, "Asset")
