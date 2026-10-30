@@ -261,7 +261,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 	end
 
 	function CatalogController:updatePreview()
-		local model = player.Character
+		local model = self.rig
 		if (not self.state or not model) then return end
 		if (self.preview == model and self.previewRevision == self.state.revision) then return end
 		local root = model:FindFirstChild("HumanoidRootPart")
@@ -273,7 +273,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 
 	function CatalogController:setRotation(rotation: number)
 		self.rotation = rotation
-		local model = player.Character
+		local model = self.rig
 		local root = model and model:FindFirstChild("HumanoidRootPart")
 		local orientation = root and root:FindFirstChild("OutfitOrientation")
 		if (orientation) then
@@ -307,7 +307,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 	end
 
 	function CatalogController:playMotion(item)
-		local model = player.Character
+		local model = self.rig
 		local humanoid = model and model:FindFirstChildOfClass("Humanoid")
 		if (not humanoid or not item.assetType) then return end
 		local worn = false
@@ -400,6 +400,8 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.query, self.sort, self.category, self.subcategory = "", 1, "Clothing", 1
 		self.cards, self.pageCache, self.page = {}, {}, 1
 		self.service = FORGE.GetService("OutfitService")
+		self.rig = workspace:WaitForChild("Rig", 15)
+		assert(self.rig and self.rig:IsA("Model"), "Workspace.Rig is missing.")
 		local playerGui = player:WaitForChild("PlayerGui")
 		local template = StarterGui:WaitForChild("Catalog", 15)
 		assert(template, "Catalog UI is missing from StarterGui.")
@@ -496,37 +498,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			if (result == Enum.AvatarPromptResult.Success) then self:load()
 			else self:notify("Outfit access was declined. Catalog browsing still works.") end
 		end)
-		local function bindCharacter(character)
-			task.spawn(function()
-				character:WaitForChild("Humanoid", 15)
-				character:WaitForChild("HumanoidRootPart", 15)
-				if (self.stopped or character ~= player.Character) then return end
-				self.previewRevision = nil
-				self:updatePreview()
-			end)
-		end
-		self.view:connect(player.CharacterAdded, bindCharacter)
-		if (player.Character) then bindCharacter(player.Character) end
-		local function watchOther(other)
-			if (other == player) then return end
-			local function hideCharacter(character)
-				local function hide(object)
-					if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
-				end
-				for _, object in character:GetDescendants() do hide(object) end
-				self.view:connect(character.DescendantAdded, hide)
-			end
-			self.view:connect(other.CharacterAdded, hideCharacter)
-			if (other.Character) then hideCharacter(other.Character) end
-		end
-		self.view:connect(Players.PlayerAdded, watchOther)
-		for _, other in Players:GetPlayers() do watchOther(other) end
 		task.spawn(function()
-			local module = player.PlayerScripts:WaitForChild("PlayerModule", 10)
-			if (module and not self.stopped) then
-				local success, controls = pcall(function() return require(module):GetControls() end)
-				if (success and not self.stopped) then self.controls = controls; controls:Disable() end
-			end
 			for _ = 1, 10 do
 				if (self.stopped) then return end
 				local success = pcall(function()
@@ -567,7 +539,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		if (self.view) then self.view:destroy() end
 		if (self.guiConnection) then self.guiConnection:Disconnect() end
 		if (self.previewTrack) then self.previewTrack:Stop(.15) end
-		if (self.controls) then self.controls:Enable() end
 		if (self.cameraKey) then RunService:UnbindFromRenderStep(self.cameraKey) end
 		pcall(function() StarterGui:SetCore("ResetButtonCallback", true) end)
 		if (self.previousCamera) then

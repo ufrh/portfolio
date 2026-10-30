@@ -17,8 +17,10 @@ local function player(id)
 	function humanoid:IsA() return false end
 	local root = {Name = "HumanoidRootPart", children = {}, IsA = function(_, class) return class == "BasePart" end}
 	function root:FindFirstChild(name) return self.children[name] end
+	function root:SetNetworkOwner(owner) self.networkOwner = owner end
 	local billboard = {Enabled = true, IsA = function(_, class) return class == "BillboardGui" end}
 	local character = {Humanoid = humanoid, HumanoidRootPart = root, DescendantAdded = signal(), billboard = billboard}
+	function character:IsA(class) return class == "Model" end
 	function character:FindFirstChildOfClass() return humanoid end
 	function character:FindFirstChild(name) return self[name] end
 	function character:WaitForChild(name) return self[name] end
@@ -26,7 +28,10 @@ local function player(id)
 	function character:PivotTo(pivot) self.pivot = pivot end
 	return {UserId = id, Parent = true, Character = character, HasAppearanceLoaded = function() return true end}, humanoid
 end
-local first, humanoid = player(1)
+local rigOwner, humanoid = player(99)
+creatorRig = rigOwner.Character
+environment.workspace.Rig = creatorRig
+local first = player(1)
 humanoid.applied.Shirt = 81
 humanoid.applied.Pants = 82
 humanoid.applied.Face = 83
@@ -48,11 +53,10 @@ expect(baseline.properties.Shirt == 0 and baseline.properties.Pants == 0, "basel
 expect(baseline.properties.Face == 0 and baseline.properties.Head == 0, "baseline removes face and body packages")
 expect(baseline.properties.IdleAnimation == 0, "baseline removes animations")
 expect(#baseline.accessories == 0 and next(baseline.emotes) == nil, "baseline removes accessories and emotes")
-expect(humanoid.applied.Shirt == 0 and #humanoid.applied:GetAccessories(true) == 0, "bare baseline applied to character")
+expect(humanoid.applied.Shirt == 0 and #humanoid.applied:GetAccessories(true) == 0, "bare baseline applied to Workspace.Rig")
+expect(creatorRig.HumanoidRootPart.networkOwner == first, "creator owns rig physics for local drag rotation")
 service:Start()
-service.playerConnections[first] = {}
-service:prepareCharacter(first, first.Character)
-local firstRoot = first.Character.HumanoidRootPart
+local firstRoot = creatorRig.HumanoidRootPart
 expect(not firstRoot.Anchored and humanoid.WalkSpeed == 0, "root stays unanchored and walking is disabled")
 expect(firstRoot:FindFirstChild("OutfitPosition").Attachment1 == hrpPosition, "AlignPosition targets Terrain.HRPPosition")
 expect(firstRoot:FindFirstChild("OutfitOrientation").Attachment0 == firstRoot:FindFirstChild("OutfitRootAttachment"), "AlignOrientation drives root attachment")
@@ -62,32 +66,18 @@ expect(humanoid.state == "RunningNoPhysics", "mannequin uses stable non-falling 
 expect(humanoid.AutoRotate == false and humanoid.Jump == false, "turning and active jump disabled")
 expect(humanoid.DisplayDistanceType == "None" and humanoid.HealthDisplayType == "AlwaysOff", "overhead name and health hidden")
 expect(humanoid.NameDisplayDistance == 0 and humanoid.HealthDisplayDistance == 0, "overhead distances suppressed")
-expect(not first.Character.billboard.Enabled, "custom character billboard hidden")
-expect(first.Character.HumanoidRootPart.CanCollide == false, "character collisions disabled")
+expect(not creatorRig.billboard.Enabled, "custom rig billboard hidden")
+expect(creatorRig.HumanoidRootPart.CanCollide == false, "rig collisions disabled")
 firstRoot.children.OutfitPosition = nil
 service.heartbeat.callback()
 expect(firstRoot:FindFirstChild("OutfitPosition") ~= nil and not firstRoot.Anchored, "missing position constraint is restored")
 local replacementRoot = {Name = "HumanoidRootPart", IsA = function(_, class) return class == "BasePart" end}
 modules.Character.preparePart(replacementRoot)
 expect(not replacementRoot.Anchored, "replacement root remains physics-driven")
-local fresh, freshHumanoid = player(3)
-local loaded = fresh.Character
+local fresh = player(3)
 fresh.Character = nil
-fresh.CharacterAdded, fresh.CharacterAppearanceLoaded = signal(), signal()
-function fresh:LoadCharacterAsync()
-	self.loads = (self.loads or 0) + 1
-	self.Character = loaded
-	loaded.HumanoidRootPart.Anchored = true
-end
-expect(not call(fresh, "getState").ok, "loading character returns retryable failure")
-environment.task = {spawn = function(callback) callback() end}
-service.added.callback(fresh)
-expect(fresh.loads == 1 and fresh.Character == loaded, "player character is explicitly spawned once")
-expect(not loaded.HumanoidRootPart.Anchored and loaded.HumanoidRootPart:FindFirstChild("OutfitPosition"), "LoadCharacter completion adds position constraint")
-service.playerConnections[fresh][1].callback(loaded)
-expect(not loaded.HumanoidRootPart.Anchored and freshHumanoid.WalkSpeed == 0, "spawned character is immediately constrained")
-expect(call(fresh, "getState").ok, "character becomes available after spawning")
-environment.task = nil
+expect(call(fresh, "getState").ok, "creator works without spawning a player character")
+expect(fresh.Character == nil and creatorRig.Parent ~= services.ServerStorage, "Workspace.Rig remains the creator model")
 service:Stop()
 expect(not call(first, "toggleItem", -1, "Asset").ok, "negative id rejected")
 expect(not call(first, "toggleItem", 0/0, "Asset").ok, "NaN rejected")

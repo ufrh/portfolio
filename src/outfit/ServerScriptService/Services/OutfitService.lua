@@ -3,7 +3,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AvatarEditorService = game:GetService("AvatarEditorService")
 local AssetService = game:GetService("AssetService")
 local HttpService = game:GetService("HttpService")
-local ServerStorage = game:GetService("ServerStorage")
 local RunService = game:GetService("RunService")
 
 local FORGE = require(ReplicatedStorage:WaitForChild("FORGE"))
@@ -30,15 +29,16 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	local function getSession(player: Player)
 		if (sessions[player]) then return sessions[player] end
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		assert(humanoid and player:HasAppearanceLoaded(), "Your character is still loading. Try again.")
+		local humanoid = OutfitService.creatorRig:FindFirstChildOfClass("Humanoid")
+		assert(humanoid, "Workspace.Rig has no Humanoid.")
 		local loaded = humanoid:GetAppliedDescription()
 		local description = Description.bare(loaded)
 		loaded:Destroy()
 		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
 		if (not success) then description:Destroy(); error(reason) end
-		Character.constrain(character, OutfitService.creatorPosition)
+		Character.constrain(OutfitService.creatorRig, OutfitService.creatorPosition)
+		local root = OutfitService.creatorRig:FindFirstChild("HumanoidRootPart")
+		if (root) then pcall(function() root:SetNetworkOwner(player) end) end
 		local session = {
 			description = description, baseline = description:Clone(), favorites = {}, recents = {},
 			outfits = {}, nextOutfit = 0, selected = nil, revision = 0
@@ -70,17 +70,16 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	local function apply(player, session, description, selected)
 		if (not player.Parent) then description:Destroy(); error("Player left.") end
-		local character = player.Character
-		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-		if (not humanoid) then description:Destroy(); error("Your character is still loading.") end
+		local humanoid = OutfitService.creatorRig:FindFirstChildOfClass("Humanoid")
+		if (not humanoid) then description:Destroy(); error("Workspace.Rig has no Humanoid.") end
 		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
 		if (not success) then
 			description:Destroy()
 			pcall(function() humanoid:ApplyDescriptionAsync(session.description) end)
-			Character.constrain(character, OutfitService.creatorPosition)
+			Character.constrain(OutfitService.creatorRig, OutfitService.creatorPosition)
 			error(reason)
 		end
-		Character.constrain(character, OutfitService.creatorPosition)
+		Character.constrain(OutfitService.creatorRig, OutfitService.creatorPosition)
 		session.description:Destroy()
 		session.description = description
 		session.selected = selected
@@ -237,33 +236,26 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		self.creatorPosition = position
 		local rig = workspace:WaitForChild("Rig", 10)
 		assert(rig and rig:IsA("Model"), "Workspace.Rig is missing.")
-		rig.Parent = ServerStorage
+		self.creatorRig = rig
 	end
 
-	function OutfitService:prepareCharacter(player, character)
-		local humanoid = character:WaitForChild("Humanoid", 15)
-		local root = character:WaitForChild("HumanoidRootPart", 15)
-		if (not humanoid or not root or character ~= player.Character) then return end
-		Character.constrain(character, self.creatorPosition)
-		local previous = self.partConnections[player]
-		if (previous) then previous:Disconnect() end
-		self.partConnections[player] = character.DescendantAdded:Connect(Character.preparePart)
+	function OutfitService:prepareRig()
+		local humanoid = self.creatorRig:WaitForChild("Humanoid", 15)
+		local root = self.creatorRig:WaitForChild("HumanoidRootPart", 15)
+		if (not humanoid or not root) then return end
+		Character.constrain(self.creatorRig, self.creatorPosition)
+		if (self.partConnection) then self.partConnection:Disconnect() end
+		self.partConnection = self.creatorRig.DescendantAdded:Connect(Character.preparePart)
 	end
 
 	function OutfitService:Start()
-		self.playerConnections, self.partConnections = {}, {}
+		self:prepareRig()
 		self.heartbeat = RunService.Heartbeat:Connect(function()
-			for player in self.playerConnections do
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if (root and (root.Anchored or not root:FindFirstChild("OutfitPosition")
-					or not root:FindFirstChild("OutfitOrientation"))) then Character.constrain(character, self.creatorPosition) end
-			end
+			local root = self.creatorRig:FindFirstChild("HumanoidRootPart")
+			if (root and (root.Anchored or not root:FindFirstChild("OutfitPosition")
+				or not root:FindFirstChild("OutfitOrientation"))) then Character.constrain(self.creatorRig, self.creatorPosition) end
 		end)
 		self.removing = Players.PlayerRemoving:Connect(function(player)
-			for _, connection in self.playerConnections[player] or {} do connection:Disconnect() end
-			self.playerConnections[player] = nil
-			if (self.partConnections[player]) then self.partConnections[player]:Disconnect(); self.partConnections[player] = nil end
 			local session = sessions[player]
 			if (not session) then return end
 			sessions[player] = nil
@@ -271,44 +263,11 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			session.baseline:Destroy()
 			for _, outfit in session.outfits do outfit.description:Destroy() end
 		end)
-		local function connectPlayer(player)
-			self.playerConnections[player] = {
-				player.CharacterAdded:Connect(function(character)
-					task.spawn(function() self:prepareCharacter(player, character) end)
-				end),
-				player.CharacterAppearanceLoaded:Connect(function(character)
-					task.spawn(function()
-						local session = sessions[player]
-						if (session) then
-							pcall(function() character.Humanoid:ApplyDescriptionAsync(session.description) end)
-						else
-							pcall(function() getSession(player) end)
-						end
-						self:prepareCharacter(player, character)
-					end)
-				end)
-			}
-			task.spawn(function()
-				if (player.Character) then self:prepareCharacter(player, player.Character); return end
-				local success, reason = pcall(function() player:LoadCharacterAsync() end)
-				if (not success) then warn("[Creator] " .. tostring(reason)) end
-				if (player.Parent and player.Character) then
-					pcall(function() getSession(player) end)
-					self:prepareCharacter(player, player.Character)
-				end
-			end)
-		end
-		self.added = Players.PlayerAdded:Connect(connectPlayer)
-		for _, player in Players:GetPlayers() do connectPlayer(player) end
 	end
 
 	function OutfitService:Stop()
 		if (self.removing) then self.removing:Disconnect() end
-		if (self.added) then self.added:Disconnect() end
 		if (self.heartbeat) then self.heartbeat:Disconnect() end
-		for _, connections in self.playerConnections or {} do
-			for _, connection in connections do connection:Disconnect() end
-		end
-		for _, connection in self.partConnections or {} do connection:Disconnect() end
+		if (self.partConnection) then self.partConnection:Disconnect() end
 	end
 end return OutfitService;

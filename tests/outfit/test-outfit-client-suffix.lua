@@ -73,12 +73,13 @@ local rotationBase = setmetatable({}, {__mul = function(_, angle) return angle e
 environment.CFrame = {Angles = function(_, angle) return angle end}
 controller.rotation = 0
 controller.hrpPosition = {WorldCFrame = {Rotation = rotationBase}}
+controller.rig = creatorRig
 controller.state = {revision = 1, equipped = {}}
 controller:updatePreview()
-expect(controller.preview == first.Character, "creator uses actual player character")
-expect(not first.Character.HumanoidRootPart.Anchored, "client leaves root physics-driven")
+expect(controller.preview == creatorRig, "creator uses Workspace.Rig")
+expect(not creatorRig.HumanoidRootPart.Anchored, "client leaves rig root physics-driven")
 controller:setRotation(1.25)
-expect(first.Character.HumanoidRootPart:FindFirstChild("OutfitOrientation").CFrame == 1.25, "rotation updates AlignOrientation target")
+expect(creatorRig.HumanoidRootPart:FindFirstChild("OutfitOrientation").CFrame == 1.25, "rotation updates AlignOrientation target")
 local mouse = {UserInputType = "MouseButton1", Position = {X = 100}}
 controller:beginDrag(mouse, false)
 controller:drag({UserInputType = "MouseMovement", Position = {X = 140}})
@@ -88,19 +89,10 @@ expect(controller.dragInput == nil, "rotation drag ends cleanly")
 controller:beginDrag(mouse, true)
 expect(controller.dragInput == nil, "UI interactions do not begin rotation drag")
 local previous = controller.preview
-modules.Character.constrain(second.Character, hrpPosition)
 first.Character = second.Character
 controller.state.revision = 2
 controller:updatePreview()
-expect(controller.preview == second.Character and not previous.destroyed, "replacement character is bound without destroying old model")
-local active = first.Character
-first.Character = nil
-controller.state.revision = 3
-controller:updatePreview()
-expect(controller.preview == active, "missing character does not crash UI refresh")
-first.Character = active
-controller:updatePreview()
-expect(controller.previewRevision == 3, "late character can refresh successfully")
+expect(controller.preview == creatorRig and not previous.destroyed, "player character changes do not replace creator rig")
 local render, priority
 function services.RunService:BindToRenderStep(_, value, callback) priority, render = value, callback end
 EnumMock.RenderPriority = {Camera = {Value = 200}}

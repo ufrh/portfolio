@@ -138,6 +138,7 @@ end
 local rotation = {Rotation = 1}
 local hrpPosition = {WorldCFrame = rotation, IsA = function(_, class) return class == "Attachment" end}
 local terrain = {WaitForChild = function(_, name) assert(name == "HRPPosition"); return hrpPosition end}
+local creatorRig
 local environment = setmetatable({
 	Enum = EnumMock,
 	CatalogSearchParams = {new = function() return {} end},
@@ -148,13 +149,7 @@ local environment = setmetatable({
 	game = {GetService = function(_, name) assert(services[name], name); return services[name] end},
 	workspace = {Terrain = terrain, WaitForChild = function(_, name)
 		assert(name == "Rig")
-		return {GetPivot = function() return 1 end, IsA = function(_, class) return class == "Model" end, FindFirstChildOfClass = function()
-			return {GetAppliedDescription = function()
-				local description = newDescription()
-				description.Shirt = 77
-				return description
-			end}
-		end}
+		return creatorRig
 	end},
 	require = function(name) assert(modules[name], tostring(name)); return modules[name] end,
 	warn = function() end,

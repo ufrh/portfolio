@@ -9,11 +9,11 @@ Outfit Studio uses FORGE services/controllers with the existing StarterGui Catal
 - Item cards show thumbnails, names, creators, prices, selection badges, and favorite controls. Runtime clones receive meaningful child names.
 - Try-on toggles supported assets; bundles apply supported constituent assets. Gear is browse-only. Unsupported items and failed requests show feedback.
 - The server validates remote arguments and resolves asset types from Roblox, never from client metadata. Per-player mutation locks and rate limits prevent overlapping avatar changes.
-- Automatic spawning is disabled so the server can explicitly load each player's actual character once. Workspace.Rig is moved to ServerStorage during runtime. The Catalog is mounted explicitly, so it can show loading feedback before the character finishes loading.
+- Automatic player spawning is disabled. Workspace.Rig stays in Workspace and is the creator mannequin. The Catalog is mounted explicitly so it can show loading feedback while the rig initializes.
 - The Catalog mount keeps exactly one ScreenGui, removes late automatic StarterGui duplicates, and preserves unrelated screens. The source template and mounted Catalog use ResetOnSpawn=false.
-- The actual player character is held at Terrain.HRPPosition by AlignPosition and rotated by AlignOrientation. Walking, jumping, automatic turning, collisions, overhead names, health displays, and character BillboardGuis are disabled. Default controls and the reset button are disabled on the client. Other players' characters are hidden locally to keep their creators from overlapping yours.
+- Workspace.Rig is held at Terrain.HRPPosition by AlignPosition and rotated by AlignOrientation. Walking, jumping, falling states, automatic turning, collisions, overhead names, health displays, and character BillboardGuis are disabled. The active player owns its physics so local mouse or touch dragging remains responsive.
 - A server heartbeat restores missing position or orientation constraints. Mouse and touch dragging rotate the local mannequin without fighting the position constraint.
-- The equipped strip removes individual items. Try-on applies to the actual character on the server, with rollback if applying an appearance fails. Movement/display constraints are reapplied after appearance changes. RESET restores the bare creator baseline. ROTATE turns the constrained character.
+- The equipped strip removes individual items. Try-on applies to Workspace.Rig on the server, with rollback if applying an appearance fails. Movement/display constraints are reapplied after appearance changes. RESET restores the bare creator baseline. ROTATE turns the constrained rig.
 - The camera is Scriptable and follows Workspace.Terrain.CamLockAngle.WorldCFrame after the default camera update. CamLockAngle must be an Attachment; no positional offset is added.
 - Starred, Recents, and My Outfits last for the current server session. Favorites are capped at 24, recents at 20, and saved outfits at 20. SAVE OUTFIT opens a name input; the × on a saved card deletes it. No DataStore persistence or purchases are implemented.
 - Roblox Outfits reads the current player's platform outfits. ALLOW ACCESS requests Roblox inventory permission explicitly. No permission prompt occurs on startup. Applying an outfit changes the experience character, not the account avatar.
@@ -28,7 +28,7 @@ node tests/outfit/run.cjs /path/to/luau
 rojo build outfit.project.json -o outfit.rbxlx
 ```
 
-The tests execute the actual modules against API fixtures. They cover validation, concurrent requests, item/bundle changes, rollback, outfit ownership, session limits, FORGE response size, pagination failures, stale request cancellation, explicit character loading, character movement/display constraints, late StarterGui duplication, constraint restoration, and attachment camera locking. They do not replace a Studio Play test of visual layout.
+The tests execute the actual modules against API fixtures. They cover validation, concurrent requests, item/bundle changes, rollback, outfit ownership, session limits, FORGE response size, pagination failures, stale request cancellation, character-free player sessions, rig movement/display constraints, late StarterGui duplication, constraint restoration, and attachment camera locking. They do not replace a Studio Play test of visual layout.
 
 Catalog searches use a supported Roblox page limit of 28. A read-only Studio API query using the production Clothing filters returned items successfully after correcting the earlier unsupported limit of 24.
 
