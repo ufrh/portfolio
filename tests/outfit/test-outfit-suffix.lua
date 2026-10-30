@@ -47,8 +47,13 @@ local function call(owner, name, ...)
 end
 local function avatar(state) return jsonValues[state.avatarJSON] end
 service:Init()
+expect(Catalog.is3D({itemType = "Asset", assetType = "Hat"}), "accessories use 3D previews")
+expect(not Catalog.is3D({itemType = "Asset", assetType = "Shirt"}), "classic clothing keeps thumbnail previews")
+expect(Catalog.is3D({itemType = "Bundle"}), "bundles use 3D previews")
 expect(creatorRig.ModelStreamingMode == "Persistent", "creator rig remains streamed to character-free clients")
 expect(call(first, "getState").revision == 0, "initial avatar revision")
+local preview = call(first, "getPreview", 200, "Asset")
+expect(preview.ok and service.previewFolder:FindFirstChild(preview.name), "3D preview mannequin is replicated")
 local baseline = avatar(call(first, "getState"))
 expect(baseline.properties.Shirt == 0 and baseline.properties.Pants == 0, "baseline removes classic clothing")
 expect(baseline.properties.Face == 0 and baseline.properties.Head == 0, "baseline removes face and body packages")

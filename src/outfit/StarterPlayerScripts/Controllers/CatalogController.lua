@@ -17,7 +17,17 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 	local player = Players.LocalPlayer
 
 	function CatalogController:notify(text: string)
-		self.notice.Text = text
+		if (self.notice) then self.notice.Text = text end
+	end
+
+	function CatalogController:previewItem(parent, item, generation: number)
+		if (not Catalog.is3D(item)) then return end
+		local success, result = pcall(function()
+			return self.service.getPreview(self.service, item.id, item.itemType);
+		end)
+		if (not success or not result.ok or generation ~= self.generation or self.stopped) then return end
+		local source = self.previewFolder:FindFirstChild(result.name)
+		if (source and parent.Parent) then self.view:preview(parent, source) end
 	end
 
 	function CatalogController:request(method: string, ...)
@@ -76,21 +86,18 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.view.items.CanvasPosition = Vector2.zero
 		self.view:message(if (#items == 0) then "Nothing here yet. Try another search or category." else "")
 		for index, item in items do
-			local favorite, removeSaved
-			if (item.itemType ~= "SavedOutfit") then
-				favorite = function()
-					if (self:request("toggleFavorite", item.id, item.itemType) and self.category == "Starred") then self:load() end
-				end
-			else
-				removeSaved = function()
-					if (self:request("deleteOutfit", item.id)) then self:load() end
-				end
-			end
-			local frame = self.view:card(item, index, function() self:activate(item) end, favorite, removeSaved)
+			local frame = self.view:card(item, index, function() self:activate(item) end)
 			table.insert(self.cards, {frame = frame, item = item})
 		end
 		self:updateSelection()
 		self:updatePage()
+		local generation = self.generation
+		task.spawn(function()
+			for _, card in self.cards do
+				if (generation ~= self.generation or self.stopped) then return end
+				self:previewItem(card.frame.Preview, card.item, generation)
+			end
+		end)
 	end
 
 	function CatalogController:updatePage()
@@ -225,11 +232,9 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			self.view:button(tab, "Select", function()
 				self.subcategory = index
 				for selected, other in tabs do self.view:select(other, selected == index) end
-				self.allowAccess.Visible = category == "Outfits" and index == 2
 				self:load()
 			end)
 		end
-		self.allowAccess.Visible = false
 		self:load()
 	end
 
@@ -243,20 +248,8 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			end
 			self.view:thumbnail(frame, item)
 			local remove = self.view:button(frame, "Remove", function() self:request("removeItem", item.id) end)
-			local label = Instance.new("TextLabel") do
-				label.Name = "ItemName"
-				label.Text = item.name .. " · ×"
-				label.TextSize = 10
-				label.FontFace = self.view.inner.Search.TextBox.FontFace
-				label.TextColor3 = remove.TextColor3
-				label.BackgroundTransparency = .2
-				label.BackgroundColor3 = self.view.inner.BackgroundColor3
-				label.Size = UDim2.new(1, 0, 0, 20)
-				label.Position = UDim2.new(0, 0, 1, -20)
-				label.TextTruncate = Enum.TextTruncate.AtEnd
-				label.ZIndex = 11
-				label.Parent = frame
-			end
+			local generation = self.generation
+			task.spawn(function() self:previewItem(frame, item, generation) end)
 		end
 	end
 
@@ -338,47 +331,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		animation:Destroy()
 	end
 
-	function CatalogController:saveDialog()
-		if (self.dialog) then self.dialog:Destroy(); self.dialog = nil; return end
-		local dialog = Instance.new("Frame") do
-			dialog.Name = "SaveOutfit"
-			dialog.Size = UDim2.fromOffset(330, 120)
-			dialog.Position = UDim2.fromOffset(200, 610)
-			dialog.BackgroundColor3 = self.view.inner.BackgroundColor3
-			dialog.ZIndex = 30
-			dialog.Parent = self.view.canvas
-		end
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = self.view.inner.Header.TextColor3
-		stroke.Parent = dialog
-		local input = self.view.inner.Search.TextBox:Clone() do
-			input.Name = "OutfitName"
-			input.Size = UDim2.new(1, -24, 0, 40)
-			input.Position = UDim2.fromOffset(12, 8)
-			input.PlaceholderText = "Outfit name (saved this session)"
-			input.Text = ""
-			input.ZIndex = 31
-			input.Parent = dialog
-		end
-		local save = self.view:button(dialog, "Save", function()
-			if (self:request("saveOutfit", Catalog.text(input.Text, 40))) then
-				dialog:Destroy()
-				self.dialog = nil
-				self:notify("Outfit saved for this session.")
-				if (self.category == "Outfits") then self:load() end
-			end
-		end, "SAVE")
-		save.Size = UDim2.fromOffset(130, 40)
-		save.Position = UDim2.fromOffset(12, 65)
-		save.ZIndex = 32
-		local cancel = self.view:button(dialog, "Cancel", function() dialog:Destroy(); self.dialog = nil end, "CANCEL")
-		cancel.Size = UDim2.fromOffset(130, 40)
-		cancel.Position = UDim2.fromOffset(180, 65)
-		cancel.ZIndex = 32
-		self.dialog = dialog
-		input:CaptureFocus()
-	end
-
 	function CatalogController:lockCamera(camLock: Attachment)
 		local camera = workspace.CurrentCamera
 		self.previousCamera = {kind = camera.CameraType, cframe = camera.CFrame}
@@ -415,42 +367,8 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 				task.defer(function() if (not self.stopped) then self:updatePreview() end end)
 			end
 		end)
-		local actions = Instance.new("Frame") do
-			actions.Name = "OutfitActions"
-			actions.BackgroundTransparency = 1
-			actions.Size = UDim2.fromOffset(620, 95)
-			actions.Position = UDim2.fromOffset(150, 745)
-			actions.Parent = self.view.canvas
-		end
-		local function action(name, text, x, callback)
-			local button = self.view:button(actions, name, callback, text)
-			button.Size = UDim2.fromOffset(135, 30)
-			button.Position = UDim2.fromOffset(x, 0)
-			button.BackgroundColor3 = self.view.inner.BackgroundColor3
-			button.BackgroundTransparency = .1
-			return button;
-		end
-		action("Reset", "RESET", 0, function() self:request("reset") end)
-		action("SaveOutfit", "SAVE OUTFIT", 140, function() self:saveDialog() end)
-		action("Rotate", "ROTATE", 280, function()
-			self:setRotation(self.rotation + math.rad(45))
-		end)
-		self.allowAccess = action("AllowAccess", "ALLOW ACCESS", 420, function()
-			AvatarEditorService:PromptAllowInventoryReadAccess()
-		end)
-		self.allowAccess.Visible = false
-		self.notice = Instance.new("TextLabel") do
-			self.notice.Name = "Status"
-			self.notice.BackgroundColor3 = self.view.inner.BackgroundColor3
-			self.notice.BackgroundTransparency = .15
-			self.notice.TextColor3 = self.view.inner.Header.TextColor3
-			self.notice.FontFace = self.view.inner.Search.TextBox.FontFace
-			self.notice.TextSize = 13
-			self.notice.TextWrapped = true
-			self.notice.Size = UDim2.fromOffset(590, 50)
-			self.notice.Position = UDim2.fromOffset(0, 36)
-			self.notice.Parent = actions
-		end
+		self.previewFolder = ReplicatedStorage:WaitForChild("OutfitPreviews", 15)
+		assert(self.previewFolder, "ReplicatedStorage.OutfitPreviews is missing.")
 		self.previous = self.view:button(self.view.inner.Page.Previous, "PreviousPage", function()
 			if (self.previous.Active) then self:changePage(-1) end
 		end)
@@ -462,31 +380,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			assert(tab, "Missing category: " .. category)
 			self.view:button(tab, "Select", function() self:chooseCategory(category) end)
 		end
-		local filter = self.view.inner.Filter
-		self.view:button(filter, "ChooseSort", function()
-			if (self.sortMenu) then self.sortMenu:Destroy(); self.sortMenu = nil; return end
-			local menu = Instance.new("Frame") do
-				menu.Name = "SortMenu"
-				menu.Size = UDim2.new(1, 0, 0, #Catalog.sorts * 30)
-				menu.Position = UDim2.fromOffset(0, -#Catalog.sorts * 30)
-				menu.BackgroundColor3 = self.view.inner.BackgroundColor3
-				menu.ZIndex = 25
-				menu.Parent = filter
-			end
-			for index, option in Catalog.sorts do
-				local button = self.view:button(menu, option.value, function()
-					self.sort = index
-					filter.Selected.Text = option.label
-					menu:Destroy()
-					self.sortMenu = nil
-					self:load()
-				end, option.label)
-				button.Size = UDim2.new(1, 0, 0, 30)
-				button.Position = UDim2.fromOffset(0, (index - 1) * 30)
-				button.ZIndex = 26
-			end
-			self.sortMenu = menu
-		end)
 		local search = self.view.inner.Search.TextBox
 		search.PlaceholderText = "Enter an item name..."
 		search.Text = ""
@@ -499,10 +392,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 				self.query = Catalog.text(search.Text, 80)
 				self:load()
 			end)
-		end)
-		self.view:connect(AvatarEditorService.PromptAllowInventoryReadAccessCompleted, function(result)
-			if (result == Enum.AvatarPromptResult.Success) then self:load()
-			else self:notify("Outfit access was declined. Catalog browsing still works.") end
 		end)
 		task.spawn(function()
 			for _ = 1, 10 do
@@ -524,7 +413,6 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.view:connect(camera:GetPropertyChangedSignal("ViewportSize"), function() self.view:resize() end)
 		self.view:connect(UserInputService.InputBegan, function(input, processed)
 			self:beginDrag(input, processed)
-			if (input.KeyCode == Enum.KeyCode.Escape and self.dialog) then self.dialog:Destroy(); self.dialog = nil end
 		end)
 		self.view:connect(UserInputService.InputChanged, function(input) self:drag(input) end)
 		self.view:connect(UserInputService.InputEnded, function(input) self:endDrag(input) end)

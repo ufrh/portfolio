@@ -13,6 +13,7 @@ local Character = require(Shared.Character)
 
 local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	local sessions, details = {}, {}
+	local previews, previewOrder = {}, {}
 	local detailCount = 0
 
 	local function getDetails(id: number, itemType: string)
@@ -31,11 +32,7 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		if (sessions[player]) then return sessions[player] end
 		local humanoid = OutfitService.creatorRig:FindFirstChildOfClass("Humanoid")
 		assert(humanoid, "Workspace.Rig has no Humanoid.")
-		local loaded = humanoid:GetAppliedDescription()
-		local description = Description.bare(loaded)
-		loaded:Destroy()
-		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
-		if (not success) then description:Destroy(); error(reason) end
+		local description = OutfitService.baseline:Clone()
 		Character.constrain(OutfitService.creatorRig, OutfitService.creatorPosition)
 		local root = OutfitService.creatorRig:FindFirstChild("HumanoidRootPart")
 		if (root) then pcall(function() root:SetNetworkOwner(player) end) end
@@ -113,6 +110,56 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	end
 	local idType = FORGE.Types.Number({Min = 1, Max = 9007199254740991, Integer = true})
 	local kindType = FORGE.Types.String({MaxLength = 16})
+
+	local function previewDescription(player, id, itemType)
+		if (itemType == "SavedOutfit") then
+			for _, outfit in getSession(player).outfits do
+				if (outfit.id == id) then return outfit.description:Clone() end
+			end
+			return nil;
+		end
+		if (itemType == "RobloxOutfit") then return Players:GetHumanoidDescriptionFromOutfitIdAsync(id) end
+		local description = Instance.new("HumanoidDescription")
+		if (itemType == "Asset") then
+			local item = getDetails(id, itemType)
+			if (not Catalog.is3D(item) or not Description.apply(description, item)) then description:Destroy(); return nil end
+		else
+			local bundle = AssetService:GetBundleDetailsAsync(id)
+			for _, entry in bundle.Items or {} do
+				if (entry.Type == "Asset") then Description.apply(description, getDetails(entry.Id, "Asset")) end
+			end
+		end
+		return description;
+	end
+
+	OutfitService.Client.getPreview = function(player, id, itemType)
+		local key = itemType .. "_" .. id .. (if (itemType == "SavedOutfit") then "_" .. player.UserId else "")
+		local cached = previews[key]
+		if (cached and cached.Parent) then return {ok = true, name = cached.Name} end
+		local success, result = pcall(function()
+			local description = previewDescription(player, id, itemType)
+			if (not description) then return nil end
+			local model = Players:CreateHumanoidModelFromDescriptionAsync(description, Enum.HumanoidRigType.R15)
+			description:Destroy()
+			model.Name = key
+			for _, object in model:GetDescendants() do
+				if (object:IsA("LuaSourceContainer")) then object:Destroy()
+				elseif (object:IsA("BasePart")) then object.Anchored = true; object.CanCollide = false end
+			end
+			model.Parent = OutfitService.previewFolder
+			previews[key] = model
+			table.insert(previewOrder, model)
+			if (#previewOrder > 60) then
+				local oldest = table.remove(previewOrder, 1)
+				previews[oldest.Name] = nil
+				oldest:Destroy()
+			end
+			return model;
+		end)
+		if (not success or not result) then return {ok = false} end
+		return {ok = true, name = result.Name};
+	end
+	OutfitService:ConfigureEndpoint("getPreview", {Schema = {idType, kindType}, Rate = {Capacity = 40, Refill = 10}})
 
 	endpoint("getState", {}, function(player)
 		return snapshot(getSession(player));
@@ -238,6 +285,17 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		assert(rig and rig:IsA("Model"), "Workspace.Rig is missing.")
 		rig.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 		self.creatorRig = rig
+		local humanoid = rig:FindFirstChildOfClass("Humanoid")
+		assert(humanoid, "Workspace.Rig has no Humanoid.")
+		local loaded = humanoid:GetAppliedDescription()
+		self.baseline = Description.bare(loaded)
+		loaded:Destroy()
+		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(self.baseline) end)
+		assert(success, reason)
+		local folder = ReplicatedStorage:FindFirstChild("OutfitPreviews") or Instance.new("Folder")
+		folder.Name = "OutfitPreviews"
+		folder.Parent = ReplicatedStorage
+		self.previewFolder = folder
 	end
 
 	function OutfitService:prepareRig()
@@ -277,5 +335,6 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		if (self.added) then self.added:Disconnect() end
 		if (self.heartbeat) then self.heartbeat:Disconnect() end
 		if (self.partConnection) then self.partConnection:Disconnect() end
+		if (self.baseline) then self.baseline:Destroy() end
 	end
 end return OutfitService;

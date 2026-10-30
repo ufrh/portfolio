@@ -36,6 +36,7 @@ local EnumMock = {
 	PositionAlignmentMode = {TwoAttachment = "TwoAttachment"},
 	OrientationAlignmentMode = {OneAttachment = "OneAttachment"},
 	ModelStreamingMode = {Persistent = "Persistent"},
+	HumanoidRigType = {R15 = "R15"},
 	UserInputType = {MouseButton1 = "MouseButton1", MouseMovement = "MouseMovement", Touch = "Touch"},
 	AvatarAssetType = enums("AvatarAssetType", {"TShirt", "Hat", "Shirt", "Pants", "Head", "Face", "Gear", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShoulderAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory", "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation", "EmoteAnimation", "TShirtAccessory", "ShirtAccessory", "PantsAccessory", "JacketAccessory", "SweaterAccessory", "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory", "DressSkirtAccessory", "DynamicHead"}),
 	AccessoryType = enums("AccessoryType", {"Hat", "Hair", "Face", "Neck", "Shoulder", "Front", "Back", "Waist", "TShirt", "Shirt", "Pants", "Jacket", "Sweater", "Shorts", "LeftShoe", "RightShoe", "DressSkirt"}),
@@ -112,8 +113,9 @@ function playerService:GetHumanoidDescriptionFromOutfitIdAsync(id)
 	return value
 end
 local sharedMock = {Catalog = "Catalog", Description = "Description", Character = "Character"}
-local replicated = {}
+local replicated = {children = {}}
 function replicated:WaitForChild(name) return if name == "OutfitShared" then sharedMock else "FORGE" end
+function replicated:FindFirstChild(name) return self.children[name] end
 local services = {Players = playerService, ReplicatedStorage = replicated, AvatarEditorService = editor, HttpService = HttpMock,
 	UserInputService = {}, RunService = {Heartbeat = signal()}, StarterGui = {}, ServerStorage = {},
 	AssetService = {GetBundleDetailsAsync = function() return {Items = {{Type = "Asset", Id = 101}, {Type = "Asset", Id = 102}}} end}}
@@ -133,8 +135,14 @@ local function newInstance(name)
 		end
 	})
 	data.IsA = function(_, class) return class == name end
+	data.FindFirstChild = function(_, childName) return data.children and data.children[childName] end
 	data.Destroy = function() data.destroyed = true end
 	return object;
+end
+function playerService:CreateHumanoidModelFromDescriptionAsync()
+	local model = newInstance("Model")
+	function model:GetDescendants() return {} end
+	return model;
 end
 local rotation = {Rotation = 1}
 local hrpPosition = {WorldCFrame = rotation, IsA = function(_, class) return class == "Attachment" end}

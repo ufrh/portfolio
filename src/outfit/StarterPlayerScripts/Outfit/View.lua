@@ -1,5 +1,6 @@
 local TweenService = game:GetService("TweenService")
 local StarterGui = game:GetService("StarterGui")
+local RunService = game:GetService("RunService")
 
 local View = {} do
 	View.__index = View
@@ -14,6 +15,7 @@ local View = {} do
 			self.subcategories = self.inner.SubCategory.ScrollingFrame
 			self.connections = {}
 			self.cards = {}
+			self.viewports = {}
 			gui.ResetOnSpawn = false
 			gui.IgnoreGuiInset = true
 			gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
@@ -23,6 +25,17 @@ local View = {} do
 			self.equipped.ScrollingDirection = Enum.ScrollingDirection.Y
 			self.equipped.AutomaticCanvasSize = Enum.AutomaticSize.Y
 			self.equipped.CanvasSize = UDim2.fromOffset(0, 0)
+			table.insert(self.connections, RunService.RenderStepped:Connect(function()
+				local angle = os.clock() * .55
+				for index = #self.viewports, 1, -1 do
+					local entry = self.viewports[index]
+					if (not entry.viewport.Parent) then table.remove(self.viewports, index)
+					else
+						local position = Vector3.new(math.sin(angle) * entry.distance, entry.height, math.cos(angle) * entry.distance)
+						entry.camera.CFrame = CFrame.lookAt(position, Vector3.zero)
+					end
+				end
+			end))
 		end return self;
 	end
 
@@ -63,22 +76,6 @@ local View = {} do
 
 	function View:message(text: string, retry)
 		if (self.messageLabel) then self.messageLabel:Destroy(); self.messageLabel = nil end
-		if (text == "") then return end
-		local label = Instance.new("TextButton") do
-			label.Name = "CatalogMessage"
-			label.BackgroundTransparency = 1
-			label.Size = UDim2.new(1, -60, 0, 130)
-			label.Position = UDim2.new(0, 30, .35, 0)
-			label.Text = text
-			label.TextColor3 = self.inner.Header.TextColor3
-			label.FontFace = self.inner.Search.TextBox.FontFace
-			label.TextSize = 15
-			label.TextWrapped = true
-			label.ZIndex = 20
-			label.Parent = self.inner.ItemList
-		end
-		if (retry) then label.Activated:Connect(retry) end
-		self.messageLabel = label
 	end
 
 	function View:thumbnail(parent, item)
@@ -105,6 +102,31 @@ local View = {} do
 			icon.Position = UDim2.fromOffset(0, 0)
 			icon.Parent = image
 		end
+	end
+
+	function View:preview(parent, source: Model)
+		local viewport = parent:FindFirstChildWhichIsA("ViewportFrame")
+		if (not viewport) then return end
+		for _, child in viewport:GetChildren() do
+			if (child:IsA("Camera") or child:IsA("WorldModel")) then child:Destroy() end
+		end
+		local thumbnail = parent:FindFirstChild("Thumbnail")
+		if (thumbnail) then thumbnail:Destroy() end
+		local world = Instance.new("WorldModel")
+		world.Name = "PreviewWorld"
+		world.Parent = viewport
+		local model = source:Clone()
+		model.Name = "PreviewModel"
+		model.Parent = world
+		local bounds, size = model:GetBoundingBox()
+		model:PivotTo(CFrame.new(-bounds.Position) * model:GetPivot())
+		local camera = Instance.new("Camera")
+		camera.FieldOfView = 35
+		camera.Parent = viewport
+		viewport.CurrentCamera = camera
+		viewport.Visible = true
+		local distance = math.max(size.X, size.Y, size.Z) * 1.45
+		table.insert(self.viewports, {viewport = viewport, camera = camera, distance = math.max(distance, 2), height = size.Y * .06})
 	end
 
 	function View:card(item, index: number, activate, favorite, removeSaved)
@@ -165,17 +187,7 @@ local View = {} do
 
 	function View:select(frame, selected: boolean)
 		local marker = frame:FindFirstChild("ActiveUnderline")
-		if (not marker) then
-			marker = Instance.new("Frame")
-			marker.Name = "ActiveUnderline"
-			marker.Size = UDim2.new(1, -8, 0, 2)
-			marker.Position = UDim2.new(0, 4, 1, -4)
-			marker.BackgroundColor3 = self.inner.Header.TextColor3
-			marker.BorderSizePixel = 0
-			marker.ZIndex = 9
-			marker.Parent = frame
-		end
-		marker.Visible = selected
+		if (marker) then marker.Visible = selected end
 	end
 
 	function View:resize()
