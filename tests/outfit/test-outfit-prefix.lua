@@ -30,6 +30,9 @@ local function enums(name, names)
 	return result
 end
 local EnumMock = {
+	HumanoidDisplayDistanceType = {None = "None"},
+	HumanoidHealthDisplayType = {AlwaysOff = "AlwaysOff"},
+	HumanoidStateType = {Jumping = "Jumping"},
 	AvatarAssetType = enums("AvatarAssetType", {"TShirt", "Hat", "Shirt", "Pants", "Head", "Face", "Gear", "Torso", "LeftArm", "RightArm", "LeftLeg", "RightLeg", "HairAccessory", "FaceAccessory", "NeckAccessory", "ShoulderAccessory", "FrontAccessory", "BackAccessory", "WaistAccessory", "IdleAnimation", "WalkAnimation", "RunAnimation", "JumpAnimation", "FallAnimation", "ClimbAnimation", "SwimAnimation", "EmoteAnimation", "TShirtAccessory", "ShirtAccessory", "PantsAccessory", "JacketAccessory", "SweaterAccessory", "ShortsAccessory", "LeftShoeAccessory", "RightShoeAccessory", "DressSkirtAccessory", "DynamicHead"}),
 	AccessoryType = enums("AccessoryType", {"Hat", "Hair", "Face", "Neck", "Shoulder", "Front", "Back", "Waist", "TShirt", "Shirt", "Pants", "Jacket", "Sweater", "Shorts", "LeftShoe", "RightShoe", "DressSkirt"}),
 	BundleType = enums("BundleType", {"BodyParts", "DynamicHead", "Shoes", "Animations"}),
@@ -97,17 +100,18 @@ local function signal()
 	return {Connect = function(_, callback) return {Disconnect = function() end, callback = callback} end}
 end
 local playerService = {PlayerRemoving = signal(), PlayerAdded = signal()}
+function playerService:GetPlayers() return {} end
 function playerService:GetHumanoidDescriptionFromUserIdAsync() return newDescription() end
 function playerService:GetHumanoidDescriptionFromOutfitIdAsync(id)
 	local value = newDescription()
 	value.Pants = id
 	return value
 end
-local sharedMock = {Catalog = "Catalog", Description = "Description"}
+local sharedMock = {Catalog = "Catalog", Description = "Description", Character = "Character"}
 local replicated = {}
 function replicated:WaitForChild(name) return if name == "OutfitShared" then sharedMock else "FORGE" end
 local services = {Players = playerService, ReplicatedStorage = replicated, AvatarEditorService = editor, HttpService = HttpMock,
-	UserInputService = {}, RunService = {}, StarterGui = {},
+	UserInputService = {}, RunService = {}, StarterGui = {}, ServerStorage = {},
 	AssetService = {GetBundleDetailsAsync = function() return {Items = {{Type = "Asset", Id = 101}, {Type = "Asset", Id = 102}}} end}}
 local modules = {FORGE = ForgeMock}
 local environment = setmetatable({
@@ -115,11 +119,12 @@ local environment = setmetatable({
 	CatalogSearchParams = {new = function() return {} end},
 	Instance = {new = function(name) assert(name == "HumanoidDescription"); return newDescription() end},
 	Color3 = {new = function(r, g, b) return {R = r, G = g, B = b} end},
+	Vector3 = {zero = {}},
 	typeof = function(value) return if type(value) == "table" and value._enum then "EnumItem" else typeof(value) end,
 	game = {GetService = function(_, name) assert(services[name], name); return services[name] end},
 	workspace = {WaitForChild = function(_, name)
 		assert(name == "Rig")
-		return {FindFirstChildOfClass = function()
+		return {GetPivot = function() return 1 end, IsA = function(_, class) return class == "Model" end, FindFirstChildOfClass = function()
 			return {GetAppliedDescription = function()
 				local description = newDescription()
 				description.Shirt = 77

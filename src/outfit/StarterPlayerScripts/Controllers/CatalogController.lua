@@ -9,7 +9,7 @@ local StarterGui = game:GetService("StarterGui")
 local FORGE = require(ReplicatedStorage:WaitForChild("FORGE"))
 local Shared = ReplicatedStorage:WaitForChild("OutfitShared")
 local Catalog = require(Shared.Catalog)
-local Description = require(Shared.Description)
+local Character = require(Shared.Character)
 local View = require(script.Parent.Parent.Outfit.View)
 
 local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}) do
@@ -66,11 +66,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		if (item.itemType == "SavedOutfit" or item.itemType == "RobloxOutfit") then
 			success = self:request("applyOutfit", item.id, item.itemType)
 		else success = self:request("toggleItem", item.id, item.itemType) end
-		if (success and item.assetType == "EmoteAnimation") then
-			self.pendingEmote = "Emote" .. item.id
-		elseif (success and item.assetType and string.match(item.assetType, "Animation$")) then
-			self.pendingAnimation = {id = item.id, name = string.lower(string.gsub(item.assetType, "Animation$", ""))}
-		end
+		if (success) then self:playMotion(item) end
 	end
 
 	function CatalogController:render(items)
@@ -264,71 +260,45 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 	end
 
 	function CatalogController:updatePreview()
-		if (not self.state or self.previewRevision == self.state.revision) then return end
-		self.previewRevision = self.state.revision
-		self.previewGeneration += 1
-		local generation = self.previewGeneration
-		local avatar = self.state.avatar
-		task.spawn(function()
-			local description = Description.unpack(avatar)
-			local model = self.rigTemplate:Clone()
-			model.Name = "CreatorRig"
-			model:PivotTo(self.rigPivot * CFrame.Angles(0, self.rotation, 0))
-			local function prepare(object)
-				if (object:IsA("BasePart")) then
-					object.LocalTransparencyModifier = 1
-					object.CanCollide, object.CanTouch, object.CanQuery = false, false, false
-				end
-			end
-			for _, object in model:GetDescendants() do prepare(object) end
-			local added = model.DescendantAdded:Connect(prepare)
-			model.Parent = workspace
-			local success, reason = pcall(function()
-				model.Humanoid:ApplyDescriptionAsync(description)
+		local model = player.Character
+		if (not self.state or not model) then return end
+		if (self.preview == model and self.previewRevision == self.state.revision) then return end
+		self.rigPivot = self.state.creatorPivot
+		if (not self.rigPivot or not Character.lock(model, self.rigPivot * CFrame.Angles(0, self.rotation, 0))) then return end
+		self.preview, self.previewRevision = model, self.state.revision
+		if (self.previewTrack) then self.previewTrack:Stop(.15); self.previewTrack = nil end
+	end
+
+	function CatalogController:playMotion(item)
+		local model = player.Character
+		local humanoid = model and model:FindFirstChildOfClass("Humanoid")
+		if (not humanoid or not item.assetType) then return end
+		local worn = false
+		for _, equipped in self.state.equipped do
+			if (equipped.id == item.id) then worn = true; break end
+		end
+		if (not worn) then return end
+		if (item.assetType == "EmoteAnimation") then
+			pcall(function() humanoid:PlayEmoteAsync("Emote" .. item.id) end)
+			return;
+		end
+		if (not string.match(item.assetType, "Animation$")) then return end
+		local animate = model:FindFirstChild("Animate")
+		local name = string.lower(string.gsub(item.assetType, "Animation$", ""))
+		local folder = animate and animate:FindFirstChild(name)
+		local template = folder and folder:FindFirstChildWhichIsA("Animation")
+		local animation = if (template) then template:Clone() else Instance.new("Animation")
+		if (not template) then animation.AnimationId = "rbxassetid://" .. item.id end
+		local animator = humanoid:FindFirstChildOfClass("Animator")
+		if (animator) then
+			pcall(function()
+				self.previewTrack = animator:LoadAnimation(animation)
+				self.previewTrack.Priority = Enum.AnimationPriority.Action
+				self.previewTrack.Looped = true
+				self.previewTrack:Play(.15)
 			end)
-			added:Disconnect()
-			description:Destroy()
-			if (not success) then
-				model:Destroy()
-				warn("[CreatorRig] " .. tostring(reason))
-				self.previewRevision = nil
-				self:notify("The Rig couldn't load that look. Try RESET or another item.")
-				return;
-			end
-			if (generation ~= self.previewGeneration or self.stopped) then model:Destroy(); return end
-			for _, object in model:GetDescendants() do
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 0 end
-			end
-			model.HumanoidRootPart.Anchored = true
-			model:PivotTo(self.rigPivot * CFrame.Angles(0, self.rotation, 0))
-			if (self.preview) then self.preview:Destroy() end
-			self.preview = model
-			for _, object in self.showroomRig:GetDescendants() do
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
-			end
-			local motion = self.pendingAnimation
-			local animate = model:FindFirstChild("Animate")
-			if (not animate and not motion) then animate = self.showroomRig:FindFirstChild("Animate") end
-			self.pendingAnimation = nil
-			local folder = animate and animate:FindFirstChild(if (motion) then motion.name else "idle")
-			local source = folder and folder:FindFirstChildWhichIsA("Animation")
-			if (source or motion) then
-				local animation = if (source) then source:Clone() else Instance.new("Animation")
-				if (motion and not source) then animation.AnimationId = "rbxassetid://" .. motion.id end
-				local animator = model.Humanoid:FindFirstChildOfClass("Animator")
-				if (not animator) then animator = Instance.new("Animator"); animator.Parent = model.Humanoid end
-				pcall(function()
-					local track = animator:LoadAnimation(animation)
-					track.Looped = true
-					track:Play(.2)
-				end)
-				animation:Destroy()
-			end
-			if (self.pendingEmote) then
-				pcall(function() model.Humanoid:PlayEmoteAsync(self.pendingEmote) end)
-				self.pendingEmote = nil
-			end
-		end)
+		end
+		animation:Destroy()
 	end
 
 	function CatalogController:saveDialog()
@@ -494,15 +464,47 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 			if (result == Enum.AvatarPromptResult.Success) then self:load()
 			else self:notify("Outfit access was declined. Catalog browsing still works.") end
 		end)
-		local rig = workspace:WaitForChild("Rig", 10)
-		assert(rig and rig:IsA("Model"), "The showroom Rig is missing.")
-		self.rigPivot = rig:GetPivot()
-		self.showroomRig = rig
-		self.rigTemplate = rig:Clone()
-		assert(self.rigTemplate, "Workspace.Rig must be Archivable.")
-		for _, object in self.rigTemplate:GetDescendants() do
-			if (object:IsA("LuaSourceContainer")) then object:Destroy() end
+		local function bindCharacter(character)
+			task.spawn(function()
+				character:WaitForChild("Humanoid", 15)
+				character:WaitForChild("HumanoidRootPart", 15)
+				if (self.stopped or character ~= player.Character) then return end
+				self.previewRevision = nil
+				self:updatePreview()
+			end)
 		end
+		self.view:connect(player.CharacterAdded, bindCharacter)
+		if (player.Character) then bindCharacter(player.Character) end
+		local function watchOther(other)
+			if (other == player) then return end
+			local function hideCharacter(character)
+				local function hide(object)
+					if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 1 end
+				end
+				for _, object in character:GetDescendants() do hide(object) end
+				self.view:connect(character.DescendantAdded, hide)
+			end
+			self.view:connect(other.CharacterAdded, hideCharacter)
+			if (other.Character) then hideCharacter(other.Character) end
+		end
+		self.view:connect(Players.PlayerAdded, watchOther)
+		for _, other in Players:GetPlayers() do watchOther(other) end
+		task.spawn(function()
+			local module = player.PlayerScripts:WaitForChild("PlayerModule", 10)
+			if (module and not self.stopped) then
+				local success, controls = pcall(function() return require(module):GetControls() end)
+				if (success and not self.stopped) then self.controls = controls; controls:Disable() end
+			end
+			for _ = 1, 10 do
+				if (self.stopped) then return end
+				local success = pcall(function()
+					StarterGui:SetCore("ResetButtonCallback", false)
+					StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+				end)
+				if (success) then return end
+				task.wait(1)
+			end
+		end)
 		local camLock = workspace.Terrain:WaitForChild("CamLockAngle", 10)
 		assert(camLock and camLock:IsA("Attachment"), "Terrain.CamLockAngle must be an Attachment.")
 		local camera = workspace.CurrentCamera
@@ -514,7 +516,7 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		end)
 		self:chooseCategory("Clothing")
 		task.spawn(function()
-			for _ = 1, 3 do
+			for _ = 1, 10 do
 				if (self.stopped or self:request("getState")) then return end
 				task.wait(2)
 			end
@@ -527,14 +529,10 @@ local CatalogController = FORGE.Class("Controller", {Name = "CatalogController"}
 		self.generation += 1
 		self.previewGeneration += 1
 		if (self.view) then self.view:destroy() end
-		if (self.preview) then self.preview:Destroy() end
-		if (self.rigTemplate) then self.rigTemplate:Destroy() end
+		if (self.previewTrack) then self.previewTrack:Stop(.15) end
+		if (self.controls) then self.controls:Enable() end
 		if (self.cameraKey) then RunService:UnbindFromRenderStep(self.cameraKey) end
-		if (self.showroomRig) then
-			for _, object in self.showroomRig:GetDescendants() do
-				if (object:IsA("BasePart")) then object.LocalTransparencyModifier = 0 end
-			end
-		end
+		pcall(function() StarterGui:SetCore("ResetButtonCallback", true) end)
 		if (self.previousCamera) then
 			workspace.CurrentCamera.CameraType = self.previousCamera.kind
 			workspace.CurrentCamera.CFrame = self.previousCamera.cframe

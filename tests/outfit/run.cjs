@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '../..');
 const sources = {
   Catalog: 'src/outfit/ReplicatedStorage/OutfitShared/Catalog.lua',
   Description: 'src/outfit/ReplicatedStorage/OutfitShared/Description.lua',
+  Character: 'src/outfit/ReplicatedStorage/OutfitShared/Character.lua',
   Validator: 'src/shared/ReplicatedStorage/FORGE/Network/Validator.lua',
   Types: 'src/shared/ReplicatedStorage/FORGE/Shared/Types.lua',
   Config: 'src/shared/ReplicatedStorage/FORGE/Config.lua',

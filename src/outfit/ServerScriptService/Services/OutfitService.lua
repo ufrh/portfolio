@@ -3,26 +3,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local AvatarEditorService = game:GetService("AvatarEditorService")
 local AssetService = game:GetService("AssetService")
 local HttpService = game:GetService("HttpService")
+local ServerStorage = game:GetService("ServerStorage")
 
 local FORGE = require(ReplicatedStorage:WaitForChild("FORGE"))
 local Shared = ReplicatedStorage:WaitForChild("OutfitShared")
 local Catalog = require(Shared.Catalog)
 local Description = require(Shared.Description)
+local Character = require(Shared.Character)
 
 local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 	local sessions, details = {}, {}
 	local detailCount = 0
-	local rigBaseline
-
-	local function getBaseline()
-		if (not rigBaseline) then
-			local rig = workspace:WaitForChild("Rig", 10)
-			local humanoid = rig and rig:FindFirstChildOfClass("Humanoid")
-			assert(humanoid, "Workspace.Rig needs a Humanoid.")
-			rigBaseline = humanoid:GetAppliedDescription()
-		end
-		return rigBaseline:Clone();
-	end
 
 	local function getDetails(id: number, itemType: string)
 		local key = itemType .. ":" .. id
@@ -38,7 +29,10 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 
 	local function getSession(player: Player)
 		if (sessions[player]) then return sessions[player] end
-		local description = getBaseline()
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		assert(humanoid and player:HasAppearanceLoaded(), "Your character is still loading. Try again.")
+		local description = humanoid:GetAppliedDescription()
 		local session = {
 			description = description, baseline = description:Clone(), favorites = {}, recents = {},
 			outfits = {}, nextOutfit = 0, selected = nil, revision = 0
@@ -65,11 +59,22 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		return {ok = true, avatarJSON = HttpService:JSONEncode(Description.pack(session.description)),
 			equippedJSON = HttpService:JSONEncode(items), favoritesJSON = HttpService:JSONEncode(session.favorites),
 			recentsJSON = HttpService:JSONEncode(session.recents), outfitsJSON = HttpService:JSONEncode(outfits),
-			selected = session.selected, revision = session.revision};
+			selected = session.selected, revision = session.revision, creatorPivot = OutfitService.creatorPivot};
 	end
 
 	local function apply(player, session, description, selected)
 		if (not player.Parent) then description:Destroy(); error("Player left.") end
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if (not humanoid) then description:Destroy(); error("Your character is still loading.") end
+		local success, reason = pcall(function() humanoid:ApplyDescriptionAsync(description) end)
+		if (not success) then
+			description:Destroy()
+			pcall(function() humanoid:ApplyDescriptionAsync(session.description) end)
+			Character.lock(character, OutfitService.creatorPivot)
+			error(reason)
+		end
+		Character.lock(character, OutfitService.creatorPivot)
 		session.description:Destroy()
 		session.description = description
 		session.selected = selected
@@ -219,9 +224,30 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 		return snapshot(session);
 	end)
 
-	function OutfitService:Start()
+	function OutfitService:Init()
 		Players.CharacterAutoLoads = false
+		local rig = workspace:WaitForChild("Rig", 10)
+		assert(rig and rig:IsA("Model"), "Workspace.Rig is missing.")
+		self.creatorPivot = rig:GetPivot()
+		rig.Parent = ServerStorage
+	end
+
+	function OutfitService:prepareCharacter(player, character)
+		local humanoid = character:WaitForChild("Humanoid", 15)
+		local root = character:WaitForChild("HumanoidRootPart", 15)
+		if (not humanoid or not root or character ~= player.Character) then return end
+		Character.lock(character, self.creatorPivot)
+		local previous = self.partConnections[player]
+		if (previous) then previous:Disconnect() end
+		self.partConnections[player] = character.DescendantAdded:Connect(Character.preparePart)
+	end
+
+	function OutfitService:Start()
+		self.playerConnections, self.partConnections = {}, {}
 		self.removing = Players.PlayerRemoving:Connect(function(player)
+			for _, connection in self.playerConnections[player] or {} do connection:Disconnect() end
+			self.playerConnections[player] = nil
+			if (self.partConnections[player]) then self.partConnections[player]:Disconnect(); self.partConnections[player] = nil end
 			local session = sessions[player]
 			if (not session) then return end
 			sessions[player] = nil
@@ -229,9 +255,37 @@ local OutfitService = FORGE.Class("Service", {Name = "OutfitService"}) do
 			session.baseline:Destroy()
 			for _, outfit in session.outfits do outfit.description:Destroy() end
 		end)
+		local function connectPlayer(player)
+			self.playerConnections[player] = {
+				player.CharacterAdded:Connect(function(character)
+					task.spawn(function() self:prepareCharacter(player, character) end)
+				end),
+				player.CharacterAppearanceLoaded:Connect(function(character)
+					task.spawn(function()
+						local session = sessions[player]
+						if (session) then
+							pcall(function() character.Humanoid:ApplyDescriptionAsync(session.description) end)
+						end
+						self:prepareCharacter(player, character)
+					end)
+				end)
+			}
+			task.spawn(function()
+				if (player.Character) then self:prepareCharacter(player, player.Character); return end
+				local success, reason = pcall(function() player:LoadCharacterAsync() end)
+				if (not success) then warn("[Creator] " .. tostring(reason)) end
+			end)
+		end
+		self.added = Players.PlayerAdded:Connect(connectPlayer)
+		for _, player in Players:GetPlayers() do connectPlayer(player) end
 	end
 
 	function OutfitService:Stop()
 		if (self.removing) then self.removing:Disconnect() end
+		if (self.added) then self.added:Disconnect() end
+		for _, connections in self.playerConnections or {} do
+			for _, connection in connections do connection:Disconnect() end
+		end
+		for _, connection in self.partConnections or {} do connection:Disconnect() end
 	end
 end return OutfitService;
