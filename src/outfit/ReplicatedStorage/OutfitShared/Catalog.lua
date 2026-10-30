@@ -98,7 +98,7 @@ local Catalog = {} do
 
 	function Catalog.normalize(raw)
 		local assetType = Catalog.assetName(raw.AssetType)
-		local itemType = raw.ItemType or "Asset"
+		local itemType = if (typeof(raw.ItemType) == "EnumItem") then raw.ItemType.Name else raw.ItemType or "Asset"
 		local bundleType = if (typeof(raw.BundleType) == "EnumItem") then raw.BundleType.Name else raw.BundleType
 		return {
 			id = raw.Id, itemType = itemType, assetType = assetType, bundleType = bundleType,
