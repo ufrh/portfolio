@@ -11,9 +11,6 @@
     "ReplicatedStorage": {
       "$className": "ReplicatedStorage",
       "$ignoreUnknownInstances": true,
-      "PortfolioShared": {
-        "$path": "src/shared/ReplicatedStorage/PortfolioShared"
-      },
       "FORGE": {
         "$path": "src/shared/ReplicatedStorage/FORGE"
       },
